@@ -64,6 +64,7 @@ test('Express protects record and calendar endpoints from missing, invalid, and 
     ['post', '/api/sessions'],
     ['get', '/api/calendar/status'],
     ['post', '/api/calendar/connect'],
+    ['post', '/api/clinical-assistant'],
     ['put', '/api/appointment-links'],
     ['delete', '/api/calendar/connection'],
   ]) {

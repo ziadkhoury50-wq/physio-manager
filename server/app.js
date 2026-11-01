@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { ZodError } from 'zod'
 import { HttpError } from './errors.js'
+import { clinicalInput } from './clinical-assistant.js'
 import {
   eventQuerySchema,
   linkKeySchema,
@@ -18,6 +19,7 @@ import {
 
 export function createApp({
   services,
+  clinicalAssistant,
   origin = 'http://localhost:5173',
   publicApiUrl = 'http://localhost:3001',
   distPath,
@@ -95,6 +97,18 @@ export function createApp({
     }
   })
   app.get('/api/access', (_req, res) => res.json({ allowed: true }))
+  app.post(
+    '/api/clinical-assistant',
+    rateLimit({
+      windowMs: 60000,
+      limit: 3,
+      message: { error: 'Please wait a minute before requesting more assessment ideas.' },
+    }),
+    async (req, res) => {
+      if (!clinicalAssistant) throw new HttpError(503, 'The clinical assistant is not configured.')
+      res.json(await clinicalAssistant(clinicalInput.parse(req.body)))
+    },
+  )
   app.get('/api/records', async (req, res) => res.json(await services.records.list(req.doctor)))
   for (const [table, schema] of [
     ['patients', patientSchema],

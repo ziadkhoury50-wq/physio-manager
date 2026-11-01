@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { createApp } from './app.js'
 import { createServices } from './services.js'
 import { resolvePublicUrls } from './config.js'
+import { createClinicalAssistant } from './clinical-assistant.js'
 
 dotenv.config({ path: '.env.server', quiet: true })
 const { origin, port, publicApiUrl, callbackUrl } = resolvePublicUrls(process.env)
@@ -17,6 +18,10 @@ const config = {
 }
 const configured = Boolean(config.supabaseUrl && config.publishableKey && config.serviceKey)
 const app = createApp({
+  clinicalAssistant: createClinicalAssistant({
+    key: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  }),
   services: configured ? createServices(config) : null,
   origin,
   publicApiUrl,

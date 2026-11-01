@@ -6,6 +6,70 @@ test.beforeEach(async ({ page }) => {
   await mockWorkspace(page)
 })
 
+test('clinical assistant previews context, requires review and only adds ideas on request', async ({
+  page,
+}) => {
+  let submitted
+  await page.route('**/api/clinical-assistant', async (route) => {
+    submitted = route.request().postDataJSON()
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        overview: 'Review range of movement before choosing tests.',
+        questions: ['Clarify symptom onset.'],
+        safety: ['Review referral indicators.'],
+        assessments: [
+          {
+            name: 'Active movement review',
+            purpose: 'Observe tolerated movement.',
+            approach: 'Assess as tolerated.',
+            limitations: 'Not diagnostic alone.',
+            sourceIds: ['123'],
+          },
+        ],
+        uncertainties: ['History is incomplete.'],
+        evidenceWarning: '',
+        sources: [
+          {
+            id: '123',
+            title: 'Retrieved assessment review',
+            journal: 'Test journal',
+            date: '2025',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/123/',
+          },
+        ],
+      }),
+    })
+  })
+  await page.goto('/#/sessions')
+  await page
+    .locator('.page-heading')
+    .getByRole('button', { name: 'Record session', exact: true })
+    .click()
+  await chooseOption(page, 'Patient *', 'Nadia Farah')
+  await page.getByRole('button', { name: /Assessment ideas/ }).click()
+  const summary = page.getByRole('textbox', { name: 'Clinical summary to share' })
+  await expect(summary).toContainText('')
+  expect(await summary.inputValue()).toContain('Rotator cuff rehabilitation')
+  expect(await summary.inputValue()).not.toContain('+961')
+  expect(await summary.inputValue()).not.toContain('Nadia Farah')
+  await expect(
+    page.getByRole('button', { name: 'Suggest assessments', exact: true }),
+  ).toBeDisabled()
+  await page.getByRole('checkbox', { name: /I reviewed both fields/ }).check()
+  await page.getByRole('button', { name: 'Suggest assessments', exact: true }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Candidate assessments', exact: true }),
+  ).toBeVisible()
+  expect(submitted.reviewed).toBe(true)
+  await expect(page.getByLabel('Next-session plan', { exact: true })).toHaveValue('')
+  await noOverflow(page)
+  await page.getByRole('button', { name: 'Add idea to session plan', exact: true }).click()
+  await expect(page.getByLabel('Next-session plan', { exact: true })).toHaveValue(
+    /Assessment idea for clinician review: Active movement review/,
+  )
+})
+
 async function tab(page, name) {
   const mobile = await page.getByRole('navigation', { name: 'Mobile navigation' }).isVisible()
   await page
@@ -137,7 +201,11 @@ test('link an existing calendar event and record a session without changing the 
   await expect(page.locator('.appointment').filter({ hasText: 'Lina Tabet' })).toContainText(
     'Initial assessment',
   )
-  await page.locator('.appointment').filter({ hasText: 'Lina Tabet' }).locator('.appointment-main').click()
+  await page
+    .locator('.appointment')
+    .filter({ hasText: 'Lina Tabet' })
+    .locator('.appointment-main')
+    .click()
   await expect(page.getByText('PATIENT PROFILE', { exact: true })).toBeVisible()
   await expect(page.locator('.profile-heading h1')).toHaveText('Lina Tabet')
   await tab(page, 'Calendar')

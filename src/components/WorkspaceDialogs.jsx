@@ -13,6 +13,7 @@ import { CLINIC_ZONE, dateKey, eventDate, eventTime, formatDate } from '../lib/d
 import { Dialog, Field } from './UI'
 import Select from './Select'
 import './Select.css'
+import ClinicalAssistant from './ClinicalAssistant'
 
 export default function WorkspaceDialogs({
   modal,
@@ -244,6 +245,15 @@ export default function WorkspaceDialogs({
             <p role="alert" className="form-error">
               {formError}
             </p>
+          )}
+          {data.patients.some((item) => item.id === draft.patient_id) && (
+            <ClinicalAssistant
+              key={`${draft.patient_id}-${draft.id || 'new'}`}
+              patient={data.patients.find((item) => item.id === draft.patient_id)}
+              sessions={data.sessions}
+              draft={draft}
+              update={update}
+            />
           )}
           {!data.patients.some((item) => !item.archived) && !draft.patient_id && (
             <p className="form-error">

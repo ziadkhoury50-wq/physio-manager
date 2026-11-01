@@ -1,0 +1,142 @@
+.clinical-assistant {
+  margin-top: 24px;
+  border: 1px solid #dce7df;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fafcf9;
+}
+.clinical-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 17px;
+  text-align: left;
+  color: #315e49;
+  background: transparent;
+  font: inherit;
+}
+.clinical-toggle span {
+  flex: 1;
+}
+.clinical-toggle strong {
+  display: block;
+  font-size: 13px;
+}
+.clinical-toggle small {
+  display: block;
+  margin-top: 4px;
+  color: #617267;
+  font-size: 11px;
+}
+.clinical-toggle[aria-expanded='true'] > svg:last-child {
+  transform: rotate(180deg);
+}
+.clinical-body {
+  padding: 0 18px 20px;
+  display: grid;
+  gap: 16px;
+}
+.clinical-body p,
+.clinical-body li {
+  font-size: 13px;
+  line-height: 1.75;
+  color: #4d6256;
+  overflow-wrap: anywhere;
+}
+.clinical-body label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: #365843;
+}
+.clinical-body input:not([type='checkbox']),
+.clinical-body textarea {
+  width: 100%;
+  border: 1px solid #cedbd1;
+  border-radius: 8px;
+  padding: 12px;
+  font: inherit;
+  background: #fff;
+  color: #243b2e;
+  resize: vertical;
+}
+.clinical-body .clinical-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.7;
+}
+.clinical-consent input {
+  margin-top: 5px;
+  flex-shrink: 0;
+  accent-color: #315e49;
+}
+.clinical-results {
+  display: grid;
+  gap: 22px;
+  border-top: 1px solid #dce7df;
+  padding-top: 20px;
+}
+.clinical-results h3 {
+  font-size: 14px;
+  color: #294d38;
+  margin-bottom: 10px;
+}
+.clinical-results h4 {
+  font-size: 14px;
+  color: #294d38;
+  margin-bottom: 8px;
+}
+.clinical-results ul {
+  padding-left: 20px;
+  display: grid;
+  gap: 7px;
+}
+.clinical-card {
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #dce7df;
+  border-radius: 10px;
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+.clinical-card p strong {
+  display: block;
+  font-size: 11px;
+  color: #456d53;
+}
+.clinical-source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  color: #617267;
+}
+.clinical-source-links a,
+.clinical-reference {
+  color: #315e49;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.clinical-reference {
+  display: block;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 14px 0;
+  overflow-wrap: anywhere;
+}
+.clinical-reference small {
+  display: block;
+  color: #617267;
+}
+.clinical-body .clinical-caption {
+  font-size: 11px;
+  color: #617267;
+}
+.clinical-caution {
+  border-left: 3px solid #b3954a;
+  padding: 10px 12px;
+  background: #faf6e9;
+}

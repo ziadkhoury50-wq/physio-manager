@@ -85,6 +85,14 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ## Express API
 
+### Optional clinical assistant
+
+Set `GEMINI_API_KEY` in the ignored `.env.server` file and in Render's Environment settings. Never set a `VITE_` variable for this secret. `GEMINI_MODEL` defaults to `gemini-2.5-flash` and can be changed to an available model supporting structured JSON output. Restart/redeploy after changes. The Calendar OAuth client secret is not a Gemini API key. Create the Gemini key in Google AI Studio; do not commit it.
+
+In the session form, choose a patient and expand Assessment ideas. Review/edit the clinical preview and search topic, remove identifiers in free text, and confirm before generating. Only this reviewed text is sent. Up to three prior sessions are included in the preview, newest first; contact information and calendar details are excluded. PubMed receives only the search topic. Free-tier Gemini prompts may be used by Google for product improvement. Paid access alone does not establish healthcare privacy compliance.
+
+The Express endpoint requires doctor authentication, validates input, limits requests to three per minute, retrieves up to six relevant PubMed records and abstracts, requests structured JSON, validates the output, and rejects invented PMID links. Retrieved papers are search results, not a quality ranking; cited support still needs clinician review. If literature retrieval fails, the response clearly indicates missing evidence. No assistant output or request is stored by the app unless an idea is explicitly added to a session plan and saved. Model responses are never accepted as evidence of care delivered. Bookshelf is linked for further reading; the assistant does not invent textbook passages or upload licensed books.
+
 Except health and Google's state-protected callback, every endpoint requires a valid doctor bearer token. Inputs are validated on the server, client-supplied ownership is rejected, API responses use `Cache-Control: no-store`, and security headers and request limits are enabled.
 
 | Method | Endpoint | Purpose |
