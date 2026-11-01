@@ -36,7 +36,7 @@ test('authentication failures and safety blocks do not trigger model fallback', 
           : new Response('', { status: 403 })
       },
     })
-    await assert.rejects(assistant(input), (error) => error.status === 502)
+    await assert.rejects(assistant(input), (error) => error.status === (blocked ? 422 : 503))
     assert.equal(attempts, 1)
   }
 })
@@ -100,6 +100,7 @@ test('missing key and incomplete model responses fail without exposing secrets',
   await assert.rejects(createClinicalAssistant({})(input), (error) => error.status === 503)
   const assistant = createClinicalAssistant({
     key: 'secret',
+    fallbackModels: [],
     fetcher: async (url) => {
       if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
       return Response.json({ candidates: [{ finishReason: 'MAX_TOKENS' }] })
@@ -109,6 +110,57 @@ test('missing key and incomplete model responses fail without exposing secrets',
     assistant(input),
     (error) => error.status === 502 && !error.message.includes('secret'),
   )
+})
+
+test('truncated and invalid structured output fall back before accepting a complete guide', async () => {
+  let attempts = 0
+  const assistant = createClinicalAssistant({
+    key: 'secret',
+    fetcher: async (url, options) => {
+      if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
+      const config = JSON.parse(options.body).generationConfig
+      assert.equal(config.thinkingConfig.thinkingLevel, 'low')
+      attempts++
+      if (attempts === 1)
+        return Response.json({
+          candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: '{' }] } }],
+        })
+      return Response.json({
+        candidates: [
+          {
+            finishReason: 'STOP',
+            content: { parts: [{ text: attempts === 2 ? '{}' : JSON.stringify(output) }] },
+          },
+        ],
+      })
+    },
+  })
+  const result = await assistant(input)
+  assert.equal(attempts, 3)
+  assert.equal(result.modelUsed, 'gemini-3.5-flash-lite')
+  assert.equal(result.overview, output.overview)
+})
+
+test('quota exhaustion and invalid API keys produce actionable public errors', async () => {
+  for (const status of [429, 400]) {
+    const assistant = createClinicalAssistant({
+      key: 'secret',
+      fallbackModels: [],
+      fetcher: async (url) => {
+        if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
+        return Response.json(
+          { error: { details: status === 400 ? [{ reason: 'API_KEY_INVALID' }] : [] } },
+          { status },
+        )
+      },
+    })
+    await assert.rejects(
+      assistant(input),
+      (error) =>
+        error.status === (status === 429 ? 429 : 503) &&
+        (status === 429 ? /quota/.test(error.message) : /API key/.test(error.message)),
+    )
+  }
 })
 test('literature outages are explicit and never produce citation links', async () => {
   const assistant = createClinicalAssistant({

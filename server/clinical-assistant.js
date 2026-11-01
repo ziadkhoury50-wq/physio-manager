@@ -45,6 +45,19 @@ async function getJson(fetcher, url, options = {}) {
   if (!response.ok) {
     const error = new Error('Upstream unavailable')
     error.upstreamStatus = response.status
+    const body = await response.json().catch(() => ({}))
+    const reasons = (Array.isArray(body.error?.details) ? body.error.details : []).map(
+      (item) => item.reason,
+    )
+    error.keyRejected = reasons.some((reason) =>
+      [
+        'API_KEY_INVALID',
+        'API_KEY_EXPIRED',
+        'API_KEY_SERVICE_BLOCKED',
+        'API_KEY_HTTP_REFERRER_BLOCKED',
+        'API_KEY_IP_ADDRESS_BLOCKED',
+      ].includes(reason),
+    )
     throw error
   }
   return response.json()
@@ -65,6 +78,9 @@ async function generateAcrossModels(fetcher, models, options) {
     const model = models[i]
     const body = JSON.parse(options.body)
     if (!model.startsWith('gemini-2.5')) delete body.generationConfig.temperature
+    body.generationConfig.thinkingConfig = model.startsWith('gemini-2.5')
+      ? { thinkingBudget: 1024 }
+      : { thinkingLevel: 'low' }
     try {
       const payload = await getJson(
         fetcher,
@@ -75,12 +91,49 @@ async function generateAcrossModels(fetcher, models, options) {
           signal: AbortSignal.timeout(Math.max(1, Math.min(45000, deadline - Date.now()))),
         },
       )
-      return { payload, modelUsed: model }
+      const candidate = payload.candidates?.[0]
+      const reason = candidate?.finishReason
+      if (
+        payload.promptFeedback?.blockReason ||
+        [
+          'SAFETY',
+          'RECITATION',
+          'PROHIBITED_CONTENT',
+          'SPII',
+          'BLOCKLIST',
+          'IMAGE_SAFETY',
+        ].includes(reason)
+      ) {
+        const error = new Error('Safety refusal')
+        error.generationReason = 'SAFETY'
+        throw error
+      }
+      if (reason !== 'STOP') {
+        const error = new Error('Incomplete output')
+        error.generationReason = reason === 'MAX_TOKENS' ? 'OUTPUT_LIMIT' : 'INCOMPLETE'
+        throw error
+      }
+      let result
+      try {
+        const text =
+          candidate.content?.parts
+            ?.filter((part) => !part.thought && typeof part.text === 'string')
+            .map((part) => part.text)
+            .join('') || ''
+        result = assessmentOutput.parse(JSON.parse(text))
+      } catch {
+        const error = new Error('Invalid structured response')
+        error.generationReason = 'INVALID_OUTPUT'
+        throw error
+      }
+      return { result, modelUsed: model }
     } catch (error) {
+      error.modelUsed = model
       const transient =
         [404, 408, 429, 500, 502, 503, 504].includes(error.upstreamStatus) ||
         ['TimeoutError', 'AbortError'].includes(error.name) ||
-        error instanceof TypeError
+        error instanceof TypeError ||
+        ['OUTPUT_LIMIT', 'INCOMPLETE', 'INVALID_OUTPUT'].includes(error.generationReason)
       if (!transient || i === models.length - 1 || Date.now() >= deadline) throw error
       await new Promise((resolve) => setTimeout(resolve, Math.min(500 * 2 ** i, 2000)))
     }
@@ -147,7 +200,7 @@ export function createClinicalAssistant({
       literature = 'No retrieved evidence.'
     }
     try {
-      const { payload, modelUsed } = await generateAcrossModels(fetcher, models, {
+      const { result, modelUsed } = await generateAcrossModels(fetcher, models, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
@@ -175,16 +228,6 @@ export function createClinicalAssistant({
           },
         }),
       })
-      const candidate = payload.candidates?.[0]
-      if (candidate?.finishReason !== 'STOP') throw new Error('Incomplete output')
-      const result = assessmentOutput.parse(
-        JSON.parse(
-          candidate.content.parts
-            .filter((part) => !part.thought && part.text)
-            .map((part) => part.text)
-            .join(''),
-        ),
-      )
       const valid = new Set(sources.map((s) => s.id))
       result.assessments = result.assessments.map((item) => ({
         ...item,
@@ -197,10 +240,52 @@ export function createClinicalAssistant({
         generatedAt: new Date().toISOString(),
         modelUsed,
       }
-    } catch {
+    } catch (error) {
+      // Diagnostics deliberately exclude prompts, responses, URLs and credentials.
+      console.warn('clinical_assistant_failure', {
+        model: error.modelUsed,
+        status: error.upstreamStatus,
+        reason: error.generationReason || error.name,
+        keyRejected: Boolean(error.keyRejected),
+      })
+      if (error.generationReason === 'SAFETY')
+        throw new HttpError(
+          422,
+          'Google declined this request through its safety checks. No assessment guide was saved.',
+        )
+      if (error.keyRejected || [401, 403].includes(error.upstreamStatus))
+        throw new HttpError(
+          503,
+          'Gemini rejected the server API key or project access. Check GEMINI_API_KEY and API restrictions in Render, then redeploy.',
+        )
+      if (error.upstreamStatus === 429)
+        throw new HttpError(
+          429,
+          'The configured Gemini models have reached their available quota. Wait for quota to reset or check limits in Google AI Studio. No guide was saved.',
+        )
+      if (['TimeoutError', 'AbortError'].includes(error.name))
+        throw new HttpError(
+          504,
+          'Gemini took too long across the available models. Try again with a shorter clinical summary. No guide was saved.',
+        )
+      if (error.upstreamStatus === 400)
+        throw new HttpError(
+          502,
+          'Gemini rejected the model configuration. Check the configured model IDs and structured-output support in Render.',
+        )
+      if (error.upstreamStatus === 404)
+        throw new HttpError(
+          503,
+          'None of the configured Gemini models could be accessed. Check GEMINI_MODEL and GEMINI_FALLBACK_MODELS in Render.',
+        )
+      if (error.upstreamStatus >= 500 || error instanceof TypeError)
+        throw new HttpError(
+          503,
+          'Gemini is temporarily unavailable across the configured models. Please try again shortly.',
+        )
       throw new HttpError(
         502,
-        'The assistant could not produce a complete assessment guide. Check the Gemini key/model and quota, then try again.',
+        'Gemini returned an incomplete or invalid assessment guide across the available models. Nothing was saved. Try a shorter clinical summary.',
       )
     }
   }
