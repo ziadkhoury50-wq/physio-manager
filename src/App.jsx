@@ -518,7 +518,6 @@ export default function App() {
             >
               <Icon size={20} />
               <span>{label}</span>
-              {activeTab === path && <span className="nav-dot" />}
             </a>
           ))}
         </nav>

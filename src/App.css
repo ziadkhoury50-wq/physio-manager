@@ -74,13 +74,6 @@
   color: #26785e;
   font-weight: 600;
 }
-.nav-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #328363;
-  margin-left: auto;
-}
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 50px;
