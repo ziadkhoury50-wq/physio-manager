@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: physiomanager
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.0
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY_HOPS
+        value: '1'
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GOOGLE_TOKEN_ENCRYPTION_KEY
+        sync: false
+# After Render assigns the service URL, create a Google Web application OAuth client:
+# redirect URI = https://YOUR-ACTUAL-RENDER-HOST/api/calendar/callback
+# Then add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Render's Environment settings.
+# APP_URL and API_PUBLIC_URL default to Render's assigned HTTPS URL automatically.
