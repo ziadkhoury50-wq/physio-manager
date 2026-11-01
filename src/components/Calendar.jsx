@@ -32,6 +32,7 @@ export default function Calendar({
   refresh,
   connect,
   openEvent,
+  openPatientProfile,
   viewSession,
 }) {
   const selectedEvents = events.filter((event) => eventOnDay(event, day, timeZone))
@@ -136,42 +137,55 @@ export default function Calendar({
                       {event.end?.dateTime ? eventTime({ start: event.end }, timeZone) : ''}
                     </span>
                   </div>
-                  <button
-                    className={`appointment appointment-${index % 4}`}
-                    onClick={() => openEvent(event)}
-                  >
+                  <div className={`appointment appointment-${index % 4}`}>
                     <div className="appointment-top">
                       <span className="appointment-type">
                         {person ? 'PATIENT APPOINTMENT' : 'GOOGLE CALENDAR'}
                       </span>
-                      <MoreHorizontal size={19} />
+                      <button
+                        className="appointment-details"
+                        aria-label={`Open appointment details for ${event.summary || 'untitled appointment'}`}
+                        onClick={() => openEvent(event)}
+                      >
+                        <MoreHorizontal size={19} />
+                      </button>
                     </div>
-                    <h3>{event.summary || 'Untitled appointment'}</h3>
-                    <div className="appointment-footer">
-                      <span>
-                        <Clock3 size={13} />
-                        {event.start.date
-                          ? 'All day'
-                          : `${Math.round((new Date(event.end?.dateTime || event.start.dateTime) - new Date(event.start.dateTime)) / 60000)} min`}
-                      </span>
-                      {event.location && (
-                        <span className="appointment-location">
-                          <MapPin size={13} />
-                          {event.location}
+                    <button
+                      className="appointment-main"
+                      aria-label={
+                        person
+                          ? `Open ${person.name} patient profile`
+                          : `View appointment details for ${event.summary || 'untitled appointment'}`
+                      }
+                      onClick={() => (person ? openPatientProfile(person) : openEvent(event))}
+                    >
+                      <h3>{event.summary || 'Untitled appointment'}</h3>
+                      <div className="appointment-footer">
+                        <span>
+                          <Clock3 size={13} />
+                          {event.start.date
+                            ? 'All day'
+                            : `${Math.round((new Date(event.end?.dateTime || event.start.dateTime) - new Date(event.start.dateTime)) / 60000)} min`}
                         </span>
-                      )}
-                      <span className="appointment-link">
-                        {person ? (
-                          <>
-                            <Link2 size={12} /> Linked
-                          </>
-                        ) : (
-                          'View details'
+                        {event.location && (
+                          <span className="appointment-location">
+                            <MapPin size={13} />
+                            {event.location}
+                          </span>
                         )}
-                        <ArrowRight size={13} />
-                      </span>
-                    </div>
-                  </button>
+                        <span className="appointment-link">
+                          {person ? (
+                            <>
+                              <Link2 size={12} /> {person.name}
+                            </>
+                          ) : (
+                            'View details'
+                          )}
+                          <ArrowRight size={13} />
+                        </span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               )
             })}

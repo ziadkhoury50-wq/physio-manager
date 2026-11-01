@@ -694,6 +694,37 @@ h1 {
   margin-bottom: 7px;
   color: #90a17f;
 }
+.appointment-details {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.appointment-details:hover {
+  color: #315e49;
+}
+.appointment-main {
+  display: block;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.appointment-main:focus-visible,
+.appointment-details:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
 .appointment-type {
   font-size: 7px;
   letter-spacing: 1.2px;

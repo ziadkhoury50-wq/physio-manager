@@ -131,13 +131,21 @@ test('link an existing calendar event and record a session without changing the 
   )
   await page.getByLabel('Treatment performed *', { exact: true }).fill('Initial knee assessment.')
   await page.getByRole('button', { name: 'Save session', exact: true }).click()
-  await expect(page.locator('.appointment').filter({ hasText: 'Lina Tabet' })).toContainText(
-    'Linked',
-  )
+  await expect(
+    page.locator('.appointment').filter({ hasText: 'Lina Tabet' }).locator('.appointment-link'),
+  ).toContainText('Lina Tabet')
   await expect(page.locator('.appointment').filter({ hasText: 'Lina Tabet' })).toContainText(
     'Initial assessment',
   )
-  await page.locator('.appointment').filter({ hasText: 'Lina Tabet' }).click()
+  await page.locator('.appointment').filter({ hasText: 'Lina Tabet' }).locator('.appointment-main').click()
+  await expect(page.getByText('PATIENT PROFILE', { exact: true })).toBeVisible()
+  await expect(page.locator('.profile-heading h1')).toHaveText('Lina Tabet')
+  await tab(page, 'Calendar')
+  await page
+    .locator('.appointment')
+    .filter({ hasText: 'Lina Tabet' })
+    .locator('.appointment-details')
+    .click()
   await chooseOption(page, 'Link to a patient', 'No patient linked')
   await expect(
     page.getByRole('dialog').getByRole('button', { name: 'Record session', exact: true }),

@@ -609,6 +609,7 @@ export default function App() {
               connection={connection}
               refresh={refreshCalendar}
               connect={connectGoogle}
+              openPatientProfile={(person) => navigate(`/patients/${person.id}`)}
               openEvent={(event) => {
                 setModal({ type: 'event', event })
                 setDirty(false)
