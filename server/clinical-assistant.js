@@ -36,12 +36,66 @@ Literature is retrieved by relevance, not proof of quality or applicability. Pre
 Return only the requested JSON. Overview is brief. Questions, safety and uncertainties are short lists. At most six assessments. This is a draft for clinician review, never a record of care delivered.`
 
 async function getJson(fetcher, url, options = {}) {
-  const response = await fetcher(url, { ...options, signal: AbortSignal.timeout(45000) })
-  if (!response.ok) throw new Error('Upstream unavailable')
+  const response = await fetcher(url, {
+    ...options,
+    signal:
+      options.signal ||
+      AbortSignal.timeout(url.includes('generativelanguage.googleapis.com') ? 45000 : 12000),
+  })
+  if (!response.ok) {
+    const error = new Error('Upstream unavailable')
+    error.upstreamStatus = response.status
+    throw error
+  }
   return response.json()
 }
 
-export function createClinicalAssistant({ key, model = 'gemini-2.5-flash', fetcher = fetch }) {
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash'
+export const DEFAULT_GEMINI_FALLBACKS = [
+  'gemini-3.6-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+]
+
+async function generateAcrossModels(fetcher, models, options) {
+  const deadline = Date.now() + 120000
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i]
+    const body = JSON.parse(options.body)
+    if (!model.startsWith('gemini-2.5')) delete body.generationConfig.temperature
+    try {
+      const payload = await getJson(
+        fetcher,
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          ...options,
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(Math.max(1, Math.min(45000, deadline - Date.now()))),
+        },
+      )
+      return { payload, modelUsed: model }
+    } catch (error) {
+      const transient =
+        [404, 408, 429, 500, 502, 503, 504].includes(error.upstreamStatus) ||
+        ['TimeoutError', 'AbortError'].includes(error.name) ||
+        error instanceof TypeError
+      if (!transient || i === models.length - 1 || Date.now() >= deadline) throw error
+      await new Promise((resolve) => setTimeout(resolve, Math.min(500 * 2 ** i, 2000)))
+    }
+  }
+}
+
+export function createClinicalAssistant({
+  key,
+  model = DEFAULT_GEMINI_MODEL,
+  fallbackModels = DEFAULT_GEMINI_FALLBACKS,
+  fetcher = fetch,
+}) {
+  const models = [
+    ...new Set([model, ...fallbackModels].map((value) => value.trim()).filter(Boolean)),
+  ].slice(0, 6)
   return async (input) => {
     if (!key)
       throw new HttpError(
@@ -93,38 +147,34 @@ export function createClinicalAssistant({ key, model = 'gemini-2.5-flash', fetch
       literature = 'No retrieved evidence.'
     }
     try {
-      const payload = await getJson(
-        fetcher,
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: CLINICAL_PROMPT }] },
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      topic,
-                      case: context,
-                      sources,
-                      literature,
-                    }),
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 10000,
-              responseMimeType: 'application/json',
-              responseJsonSchema: z.toJSONSchema(assessmentOutput),
+      const { payload, modelUsed } = await generateAcrossModels(fetcher, models, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: CLINICAL_PROMPT }] },
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: JSON.stringify({
+                    topic,
+                    case: context,
+                    sources,
+                    literature,
+                  }),
+                },
+              ],
             },
-          }),
-        },
-      )
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 10000,
+            responseMimeType: 'application/json',
+            responseJsonSchema: z.toJSONSchema(assessmentOutput),
+          },
+        }),
+      })
       const candidate = payload.candidates?.[0]
       if (candidate?.finishReason !== 'STOP') throw new Error('Incomplete output')
       const result = assessmentOutput.parse(
@@ -145,6 +195,7 @@ export function createClinicalAssistant({ key, model = 'gemini-2.5-flash', fetch
         sources,
         evidenceWarning,
         generatedAt: new Date().toISOString(),
+        modelUsed,
       }
     } catch {
       throw new HttpError(

@@ -20,7 +20,8 @@ const configured = Boolean(config.supabaseUrl && config.publishableKey && config
 const app = createApp({
   clinicalAssistant: createClinicalAssistant({
     key: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    model: process.env.GEMINI_MODEL || undefined,
+    fallbackModels: process.env.GEMINI_FALLBACK_MODELS?.split(','),
   }),
   services: configured ? createServices(config) : null,
   origin,

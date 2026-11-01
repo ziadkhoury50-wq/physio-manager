@@ -68,6 +68,43 @@ test('clinical assistant previews context, requires review and only adds ideas o
   await expect(page.getByLabel('Next-session plan', { exact: true })).toHaveValue(
     /Assessment idea for clinician review: Active movement review/,
   )
+  await page.getByRole('button', { name: 'Add full guide to session plan', exact: true }).click()
+  await expect(page.getByLabel('Next-session plan', { exact: true })).toHaveValue(
+    /https:\/\/pubmed.ncbi.nlm.nih.gov\/123\//,
+  )
+  await page
+    .getByLabel('Symptoms / how the patient feels', { exact: true })
+    .fill('Stiffness with reaching.')
+  await page.getByRole('spinbutton', { name: /Pain score/ }).fill('0')
+  await page
+    .getByLabel('Treatment performed *', { exact: true })
+    .fill('Reviewed assessment and mobility work.')
+  await page
+    .getByLabel('Progress / response', { exact: true })
+    .fill('Tolerated movement comfortably.')
+  await page.getByRole('button', { name: 'Save session', exact: true }).click()
+  await page.reload()
+  await page
+    .locator('.session-card')
+    .filter({ hasText: 'Reviewed assessment and mobility work.' })
+    .click()
+  await expect(page.getByRole('dialog')).toContainText('Nadia Farah')
+  await expect(page.getByRole('dialog')).toContainText('Pain score: 0/10')
+  for (const text of [
+    'Stiffness with reaching.',
+    'Reviewed assessment and mobility work.',
+    'Tolerated movement comfortably.',
+    'Clarify symptom onset.',
+    'Review referral indicators.',
+    'Assess as tolerated.',
+    'Not diagnostic alone.',
+    'History is incomplete.',
+    'Retrieved assessment review',
+    'https://pubmed.ncbi.nlm.nih.gov/123/',
+  ]) {
+    await expect(page.getByRole('dialog').locator('.session-detail')).toContainText(text)
+  }
+  await noOverflow(page)
 })
 
 async function tab(page, name) {

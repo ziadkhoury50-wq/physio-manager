@@ -293,6 +293,13 @@ export default function WorkspaceDialogs({
           {draft.pain_score != null && (
             <span className="soft-badge">Pain score: {draft.pain_score}/10</span>
           )}
+          {draft.pain_score == null && <span className="soft-badge">Pain score: not recorded</span>}
+          {draft.calendar_id && draft.event_id && (
+            <span className="soft-badge">
+              <CalendarDays size={13} />
+              Linked Google Calendar appointment
+            </span>
+          )}
         </div>
         <div className="session-detail">
           {[

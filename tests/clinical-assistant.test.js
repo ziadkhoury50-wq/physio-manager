@@ -2,6 +2,45 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createClinicalAssistant, clinicalInput } from '../server/clinical-assistant.js'
 
+test('model fallback moves from latest stable to older models on availability errors', async () => {
+  const calls = []
+  const assistant = createClinicalAssistant({
+    key: 'secret',
+    fetcher: async (url) => {
+      if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
+      calls.push(decodeURIComponent(url.split('/models/')[1].split(':')[0]))
+      if (calls.length === 1) return new Response('', { status: 404 })
+      if (calls.length === 2) return new Response('', { status: 429 })
+      return Response.json({
+        candidates: [
+          { finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(output) }] } },
+        ],
+      })
+    },
+  })
+  const result = await assistant(input)
+  assert.deepEqual(calls, ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'])
+  assert.equal(result.modelUsed, 'gemini-3.5-flash-lite')
+})
+
+test('authentication failures and safety blocks do not trigger model fallback', async () => {
+  for (const blocked of [false, true]) {
+    let attempts = 0
+    const assistant = createClinicalAssistant({
+      key: 'secret',
+      fetcher: async (url) => {
+        if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
+        attempts++
+        return blocked
+          ? Response.json({ candidates: [{ finishReason: 'SAFETY' }] })
+          : new Response('', { status: 403 })
+      },
+    })
+    await assert.rejects(assistant(input), (error) => error.status === 502)
+    assert.equal(attempts, 1)
+  }
+})
+
 const input = {
   topic: 'shoulder pain',
   context: 'Pain with overhead activity; examination not yet performed.',

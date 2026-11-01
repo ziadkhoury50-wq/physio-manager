@@ -12,6 +12,7 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [added, setAdded] = useState([])
+  const [fullAdded, setFullAdded] = useState(false)
   const mounted = useRef(true)
   useEffect(() => {
     mounted.current = true
@@ -53,6 +54,7 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
     setError('')
     setResult(null)
     setAdded([])
+    setFullAdded(false)
     try {
       const response = await api('/clinical-assistant', {
         method: 'POST',
@@ -74,6 +76,45 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
     }
     update('plan', plan)
     setAdded((old) => [...old, index])
+  }
+  function addFullGuide() {
+    const lines = [
+      'ASSESSMENT GUIDE — draft for clinician review; not a record of care delivered.',
+      result.overview,
+    ]
+    for (const [label, items] of [
+      ['Safety / referral considerations', result.safety],
+      ['Questions', result.questions],
+      ['Uncertainties', result.uncertainties],
+    ]) {
+      lines.push(`\n${label}`, ...items.map((text) => `• ${text}`))
+    }
+    lines.push('\nCandidate assessments')
+    for (const item of result.assessments)
+      lines.push(
+        `\n${item.name}`,
+        `Purpose: ${item.purpose}`,
+        `Approach: ${item.approach}`,
+        `Limitations: ${item.limitations}`,
+        `Sources: ${item.sourceIds.length ? item.sourceIds.map((id) => `PMID ${id}`).join(', ') : 'General suggestion; no retrieved citation'}`,
+      )
+    if (result.evidenceWarning) lines.push(`\nEvidence warning: ${result.evidenceWarning}`)
+    lines.push(
+      '\nRetrieved literature (requires original-source review)',
+      ...result.sources.map((s) => `${s.title} — ${s.journal}, ${s.date}\n${s.url}`),
+    )
+    if (result.modelUsed) lines.push(`\nModel: ${result.modelUsed}`)
+    if (result.generatedAt) lines.push(`Generated: ${result.generatedAt}`)
+    const plan = [draft.plan, lines.join('\n')].filter(Boolean).join('\n\n')
+    if (plan.length > 10000) {
+      setError(
+        'The full guide exceeds the 10,000-character session-plan limit. Nothing was added. Add individual ideas instead.',
+      )
+      return
+    }
+    update('plan', plan)
+    setFullAdded(true)
+    setError('')
   }
   return (
     <section className="clinical-assistant">
@@ -165,6 +206,20 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
                 a diagnosis.
               </p>
               <p>{result.overview}</p>
+              <button
+                type="button"
+                className="button secondary"
+                disabled={fullAdded}
+                onClick={addFullGuide}
+              >
+                <ClipboardPlus size={16} />
+                {fullAdded ? 'Full guide added to plan' : 'Add full guide to session plan'}
+              </button>
+              <p className="clinical-caption">
+                Save the session to keep added ideas or the full guide. They appear under
+                Next-session plan when you reopen it.
+                {result.modelUsed ? ` Generated with ${result.modelUsed}.` : ''}
+              </p>
               {result.evidenceWarning && (
                 <p className="clinical-caution">{result.evidenceWarning}</p>
               )}
