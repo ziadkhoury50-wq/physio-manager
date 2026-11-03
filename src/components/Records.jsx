@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Users,
   Trash2,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react'
 import { formatDate } from '../lib/dates'
 import { Avatar, Empty } from './UI'
@@ -203,21 +205,24 @@ export function PatientProfile({
               <span className="status-pill">{patient.archived ? 'Archived' : 'Active'}</span>
             </dd>
           </dl>
-          <button
-            className="button secondary full"
-            disabled={saving}
-            onClick={() => archivePatient(patient)}
-          >
-            {patient.archived ? 'Restore patient' : 'Archive patient'}
-          </button>
-          <button
-            className="button danger full"
-            disabled={saving}
-            onClick={() => deletePatient(patient)}
-          >
-            <Trash2 size={15} />
-            Delete patient
-          </button>
+          <div className="patient-record-actions">
+            <button
+              className="button secondary full"
+              disabled={saving}
+              onClick={() => archivePatient(patient)}
+            >
+              {patient.archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}
+              {patient.archived ? 'Restore patient' : 'Archive patient'}
+            </button>
+            <button
+              className="button danger full"
+              disabled={saving}
+              onClick={() => deletePatient(patient)}
+            >
+              <Trash2 size={15} />
+              Delete patient
+            </button>
+          </div>
         </aside>
         <div className="profile-content">
           <div className="profile-notes">

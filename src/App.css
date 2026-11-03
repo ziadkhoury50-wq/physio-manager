@@ -1342,8 +1342,14 @@ h1 {
 .button.danger:hover:not(:disabled) {
   background: #fce8e3;
 }
-.patient-information .button + .button {
-  margin-top: 10px;
+.patient-record-actions {
+  display: grid;
+  gap: 10px;
+}
+.patient-information .patient-record-actions .button {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
 }
 .form-error {
   font-size: 11px;
