@@ -32,6 +32,12 @@ test('database enforces the single doctor, ownership, private integration storag
         'utf8',
       ),
     )
+    await db.exec(
+      await readFile(
+        new URL('../supabase/migrations/202611030001_record_deletion.sql', import.meta.url),
+        'utf8',
+      ),
+    )
     await db.exec(`insert into public.app_access(doctor_user_id) values ('${doctor}');`)
     await assert.rejects(() =>
       db.exec(`insert into public.app_access(doctor_user_id) values ('${other}');`),
@@ -81,7 +87,46 @@ test('database enforces the single doctor, ownership, private integration storag
     await assert.rejects(() =>
       db.exec(`insert into public.patients(name) values ('Unauthorized');`),
     )
+    assert.equal(
+      (await db.query(`select public.delete_patient_record('${patient}') as deleted`)).rows[0]
+        .deleted,
+      false,
+    )
+    await db.exec(
+      `delete from public.sessions; select set_config('request.jwt.claim.sub', '${doctor}', false);`,
+    )
+    assert.equal((await db.query('select * from public.sessions')).rows.length, 1)
+    const extra = await db.query(
+      `insert into public.sessions(patient_id, session_date, treatment) values ('${patient}', '2026-11-03', 'Second session') returning id`,
+    )
+    await db.query('delete from public.sessions where id = $1', [extra.rows[0].id])
+    assert.equal((await db.query('select * from public.sessions')).rows.length, 1)
+    await db.exec(
+      `insert into public.appointment_links(patient_id, calendar_id, event_id) values ('${patient}', 'calendar', 'event');`,
+    )
+    await db.exec(
+      `reset role; create function public.block_test_delete() returns trigger language plpgsql as $$ begin raise exception 'simulated failure'; end $$; create trigger block_test_delete before delete on public.patients for each row execute function public.block_test_delete(); set role authenticated;`,
+    )
+    await assert.rejects(() => db.query(`select public.delete_patient_record('${patient}')`))
+    for (const table of ['patients', 'sessions', 'appointment_links'])
+      assert.equal((await db.query(`select * from public.${table}`)).rows.length, 1)
+    await db.exec(
+      'reset role; drop trigger block_test_delete on public.patients; drop function public.block_test_delete(); set role authenticated;',
+    )
+    assert.equal(
+      (await db.query(`select public.delete_patient_record('${patient}') as deleted`)).rows[0]
+        .deleted,
+      true,
+    )
+    for (const table of ['patients', 'sessions', 'appointment_links'])
+      assert.equal((await db.query(`select * from public.${table}`)).rows.length, 0)
+    assert.equal(
+      (await db.query(`select public.delete_patient_record('${patient}') as deleted`)).rows[0]
+        .deleted,
+      false,
+    )
     await db.exec('reset role; set role anon;')
+    await assert.rejects(() => db.query(`select public.delete_patient_record('${patient}')`))
     await assert.rejects(() => db.exec('select * from public.patients;'))
     await assert.rejects(() => db.exec('select * from public.sessions;'))
     await assert.rejects(() => db.exec('select * from public.google_connections;'))

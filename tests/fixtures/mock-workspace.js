@@ -40,6 +40,14 @@ export async function mockWorkspace(page) {
     } else {
       const [, , table, id] = path.split('/')
       if (!['patients', 'sessions'].includes(table)) throw new Error(`Unexpected API route ${path}`)
+      if (method === 'DELETE') {
+        data[table] = data[table].filter((row) => row.id !== id)
+        if (table === 'patients') {
+          data.sessions = data.sessions.filter((row) => row.patient_id !== id)
+          data.links = data.links.filter((row) => row.patient_id !== id)
+        }
+        return route.fulfill({ status: 204 })
+      }
       if (method === 'POST') {
         result = {
           ...body,

@@ -1323,6 +1323,7 @@ h1 {
 }
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   padding-top: 22px;
@@ -1332,6 +1333,17 @@ h1 {
   bottom: -28px;
   background: #fbfcfa;
   padding-bottom: 10px;
+}
+.button.danger {
+  color: #963f36;
+  background: #fff4f1;
+  border: 1px solid #ebcbc5;
+}
+.button.danger:hover:not(:disabled) {
+  background: #fce8e3;
+}
+.patient-information .button + .button {
+  margin-top: 10px;
 }
 .form-error {
   font-size: 11px;

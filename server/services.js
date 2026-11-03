@@ -55,6 +55,21 @@ export function createServices(config) {
       return { id: user.id, db }
     },
     records: {
+      async remove({ db }, table, id) {
+        const { data, error } =
+          table === 'patients'
+            ? await db.rpc('delete_patient_record', { patient_id_to_delete: id })
+            : await db.from('sessions').delete().eq('id', id).select('id').maybeSingle()
+        if (error) {
+          if (['PGRST202', '42883', '42501'].includes(error.code))
+            throw new HttpError(
+              503,
+              'Record deletion needs the database update. Run 202611030001_record_deletion.sql in Supabase SQL Editor, then retry.',
+            )
+          throw new HttpError(503, 'Could not delete this record. Please try again.')
+        }
+        if (!data) throw new HttpError(404, 'This record was not found in your workspace.')
+      },
       async list({ db }) {
         const [patients, sessions, links] = await Promise.all([
           readAll(db, 'patients', 'name'),

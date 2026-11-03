@@ -9,6 +9,7 @@ import {
   Search,
   ShieldCheck,
   Users,
+  Trash2,
 } from 'lucide-react'
 import { formatDate } from '../lib/dates'
 import { Avatar, Empty } from './UI'
@@ -139,6 +140,7 @@ export function PatientProfile({
   openPatient,
   openSession,
   archivePatient,
+  deletePatient,
   saving,
   viewSession,
 }) {
@@ -200,6 +202,14 @@ export function PatientProfile({
             onClick={() => archivePatient(patient)}
           >
             {patient.archived ? 'Restore patient' : 'Archive patient'}
+          </button>
+          <button
+            className="button danger full"
+            disabled={saving}
+            onClick={() => deletePatient(patient)}
+          >
+            <Trash2 size={15} />
+            Delete patient
           </button>
         </aside>
         <div className="profile-content">

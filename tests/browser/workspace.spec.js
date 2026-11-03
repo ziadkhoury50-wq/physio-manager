@@ -107,6 +107,54 @@ test('clinical assistant previews context, requires review and only adds ideas o
   await noOverflow(page)
 })
 
+test('deleting sessions and patients confirms intent, preserves failed deletes and cleans related records', async ({
+  page,
+}) => {
+  await page.goto('/#/patients/demo-1')
+  await expect(page.locator('.session-card')).toHaveCount(2)
+  await page.locator('.session-card').first().click()
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await page.getByRole('button', { name: 'Delete session', exact: true }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  let fail = true
+  await page.route('**/api/sessions/*', (route) =>
+    fail && route.request().method() === 'DELETE'
+      ? route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Deletion test failure.' }),
+        })
+      : route.fallback(),
+  )
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete session', exact: true }).click()
+  await expect(page.getByText('Deletion test failure.', { exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  fail = false
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete session', exact: true }).click()
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await page.reload()
+  await expect(page.locator('.session-card')).toHaveCount(1)
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await page.getByRole('button', { name: 'Delete patient', exact: true }).click()
+  await expect(page.locator('.profile-heading h1')).toHaveText('Nadia Farah')
+  await noOverflow(page)
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete patient', exact: true }).click()
+  await expect(page.locator('.patient-card')).toHaveCount(3)
+  await page.reload()
+  await expect(page.locator('.patient-card')).toHaveCount(3)
+  await tab(page, 'Sessions')
+  await expect(page.locator('.session-card')).toHaveCount(1)
+  await expect(page.locator('.session-card')).toContainText('Omar Haddad')
+  await tab(page, 'Calendar')
+  await expect(page.locator('.appointment')).toHaveCount(4)
+  await expect(page.locator('.appointment').filter({ hasText: 'Nadia Farah' })).toContainText(
+    'GOOGLE CALENDAR',
+  )
+})
+
 async function tab(page, name) {
   const mobile = await page.getByRole('navigation', { name: 'Mobile navigation' }).isVisible()
   await page

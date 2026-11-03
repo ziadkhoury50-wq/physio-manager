@@ -16,6 +16,9 @@ function fixture() {
       return { id: doctorId }
     },
     records: {
+      async remove(doctor, table, id) {
+        calls.push({ doctor, table, id })
+      },
       async list() {
         return { patients: [], sessions: [], links: [] }
       },
@@ -56,11 +59,35 @@ function fixture() {
   return { app: createApp({ services }), services, calls }
 }
 
+test('Express validates deletion identifiers and delegates only doctor-owned record deletion', async () => {
+  const { app, calls } = fixture()
+  for (const table of ['patients', 'sessions']) {
+    await request(app)
+      .delete(`/api/${table}/not-an-id`)
+      .set('Authorization', 'Bearer doctor')
+      .expect(400)
+    await request(app)
+      .delete(`/api/${table}/${patientId}`)
+      .set('Authorization', 'Bearer doctor')
+      .expect(204)
+  }
+  assert.equal(calls.length, 2)
+  assert.deepEqual(
+    calls.map(({ table, id }) => ({ table, id })),
+    [
+      { table: 'patients', id: patientId },
+      { table: 'sessions', id: patientId },
+    ],
+  )
+})
+
 test('Express protects record and calendar endpoints from missing, invalid, and other-user tokens', async () => {
   const { app, calls } = fixture()
   for (const [method, path] of [
     ['get', '/api/records'],
     ['post', '/api/patients'],
+    ['delete', `/api/patients/${patientId}`],
+    ['delete', `/api/sessions/${patientId}`],
     ['post', '/api/sessions'],
     ['get', '/api/calendar/status'],
     ['post', '/api/calendar/connect'],

@@ -367,6 +367,40 @@ export default function App() {
       setSaving(false)
     }
   }
+  async function deleteRecord(table, record) {
+    if (saving) return
+    const count = data.sessions.filter((item) => item.patient_id === record.id).length
+    const message =
+      table === 'patients'
+        ? `Permanently delete ${record.name}, their ${count} session record${count === 1 ? '' : 's'}, and their appointment links? This cannot be undone. Google Calendar events will be kept.`
+        : 'Permanently delete this session, including its notes and any saved assessment guide? This cannot be undone. The patient and Google Calendar event will be kept.'
+    if (!window.confirm(message)) return
+    setSaving(true)
+    setFormError('')
+    try {
+      await api(`/${table}/${record.id}`, { method: 'DELETE' })
+      setData((current) =>
+        table === 'patients'
+          ? {
+              patients: current.patients.filter((item) => item.id !== record.id),
+              sessions: current.sessions.filter((item) => item.patient_id !== record.id),
+              links: current.links.filter((item) => item.patient_id !== record.id),
+            }
+          : { ...current, sessions: current.sessions.filter((item) => item.id !== record.id) },
+      )
+      setModal(null)
+      setDirty(false)
+      if (table === 'patients') navigate('/patients')
+      setNotice(
+        table === 'patients' ? 'Patient and associated records deleted.' : 'Session deleted.',
+      )
+    } catch (error) {
+      setFormError(error.message)
+      setNotice(error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
   async function archivePatient(person) {
     if (
       !window.confirm(
@@ -639,6 +673,7 @@ export default function App() {
               openPatient={openPatient}
               openSession={openSession}
               archivePatient={archivePatient}
+              deletePatient={(person) => deleteRecord('patients', person)}
               saving={saving}
               viewSession={viewSession}
             />
@@ -683,6 +718,7 @@ export default function App() {
         </div>
       )}
       <WorkspaceDialogs
+        deleteSession={(session) => deleteRecord('sessions', session)}
         {...{
           modal,
           draft,

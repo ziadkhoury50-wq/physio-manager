@@ -114,6 +114,10 @@ export function createApp({
     ['patients', patientSchema],
     ['sessions', sessionSchema],
   ]) {
+    app.delete(`/api/${table}/:id`, async (req, res) => {
+      await services.records.remove(req.doctor, table, uuid.parse(req.params.id))
+      res.status(204).end()
+    })
     app.post(`/api/${table}`, async (req, res) => {
       const record = schema.parse(req.body)
       if (table === 'sessions' && Boolean(record.calendar_id) !== Boolean(record.event_id))

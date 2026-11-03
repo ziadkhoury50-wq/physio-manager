@@ -85,6 +85,12 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ## Express API
 
+### Record deletion
+
+Run `supabase/migrations/202611030001_record_deletion.sql` in Supabase SQL Editor to enable deletion. Patient profiles have a Delete patient action; recorded-session dialogs have Delete session. Both require confirmation. Deleting a patient atomically removes their session records and appointment links; deleting a session keeps the patient and links. Google Calendar events are never deleted. The RPC uses the signed-in doctor's permissions and existing RLS, and a failure rolls the entire patient deletion back.
+
+`DELETE /api/patients/:id` and `DELETE /api/sessions/:id` require doctor authentication and a valid UUID; successful deletion returns HTTP 204. Missing records return 404; missing database setup returns an actionable 503.
+
 ### Optional clinical assistant
 
 Set `GEMINI_API_KEY` in the ignored `.env.server` file and in Render's Environment settings. Never set a `VITE_` variable for this secret. `GEMINI_MODEL` defaults to `gemini-3.8-flash` and can be changed to an available model supporting structured JSON output. Restart/redeploy after changes. The Calendar OAuth client secret is not a Gemini API key. Create the Gemini key in Google AI Studio; do not commit it.

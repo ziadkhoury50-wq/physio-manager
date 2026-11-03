@@ -8,6 +8,7 @@ import {
   LogOut,
   MapPin,
   Plus,
+  Trash2,
 } from 'lucide-react'
 import { CLINIC_ZONE, dateKey, eventDate, eventTime, formatDate } from '../lib/dates'
 import { Dialog, Field } from './UI'
@@ -25,6 +26,7 @@ export default function WorkspaceDialogs({
   saveRecord,
   data,
   openSession,
+  deleteSession,
   linkPatient,
   calendarId,
   timeZone,
@@ -315,10 +317,18 @@ export default function WorkspaceDialogs({
           ))}
         </div>
         <div className="dialog-actions">
-          <button className="button secondary" onClick={() => onProfile(draft.patient_id)}>
+          <button
+            className="button secondary"
+            disabled={saving}
+            onClick={() => onProfile(draft.patient_id)}
+          >
             Patient profile
           </button>
-          <button className="button primary" onClick={() => openSession(draft)}>
+          <button className="button danger" disabled={saving} onClick={() => deleteSession(draft)}>
+            <Trash2 size={15} />
+            {saving ? 'Deleting…' : 'Delete session'}
+          </button>
+          <button className="button primary" disabled={saving} onClick={() => openSession(draft)}>
             Edit session <ArrowRight size={15} />
           </button>
         </div>
