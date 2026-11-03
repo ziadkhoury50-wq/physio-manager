@@ -86,7 +86,14 @@ export function createServices(config) {
           .select(table === 'patients' ? patientColumns : '*')
           .maybeSingle()
         if (error) {
-          if (['42703', 'PGRST204'].includes(error.code)) throw migrationError()
+          if (['42703', 'PGRST204'].includes(error.code)) {
+            if (table === 'sessions')
+              throw new HttpError(
+                503,
+                'Session amounts need the database update. Run 202611030002_session_amounts.sql in Supabase SQL Editor, then retry.',
+              )
+            throw migrationError()
+          }
           if (error.code === '23503' || error.code === '23514')
             throw new HttpError(400, 'Check the patient and record details and try again.')
           throw new HttpError(

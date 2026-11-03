@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { formatDate } from '../lib/dates'
 import { Avatar, Empty } from './UI'
+import { usd } from '../lib/revenue'
 
 export function SessionCard({ session, patient, onClick }) {
   return (
@@ -27,6 +28,12 @@ export function SessionCard({ session, patient, onClick }) {
         <span className="session-meta">
           <span className="status-dot" />
           Session recorded
+          {session.amount_cents != null && (
+            <>
+              <span className="meta-divider">·</span>
+              {usd(session.amount_cents)}
+            </>
+          )}
           {session.pain_score != null && (
             <>
               <span className="meta-divider">·</span>Pain {session.pain_score}/10

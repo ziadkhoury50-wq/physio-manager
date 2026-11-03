@@ -6,6 +6,45 @@ test.beforeEach(async ({ page }) => {
   await mockWorkspace(page)
 })
 
+test('session amounts persist and dashboard totals follow edits and cleared amounts', async ({
+  page,
+}) => {
+  await page.goto('/#/dashboard')
+  await expect(page.getByRole('heading', { name: 'Your work, at a glance.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'No amounts recorded yet' })).toBeVisible()
+  await noOverflow(page)
+  await tab(page, 'Sessions')
+  await page
+    .locator('.page-heading')
+    .getByRole('button', { name: 'Record session', exact: true })
+    .click()
+  await chooseOption(page, 'Patient *', 'Nadia Farah')
+  await page.getByLabel('Session amount (USD)', { exact: true }).fill('45.25')
+  await page.getByLabel('Treatment performed *', { exact: true }).fill('Revenue assessment')
+  await page.getByRole('button', { name: 'Save session', exact: true }).click()
+  await tab(page, 'Dashboard')
+  await expect(page.locator('.dashboard-metric').first()).toContainText('$45.25')
+  await expect(page.getByRole('list', { name: 'Recorded revenue by period' })).toBeVisible()
+  await noOverflow(page)
+  await page.locator('.dashboard-session-row').first().click()
+  await expect(page.getByRole('dialog')).toContainText('Session amount: $45.25')
+  await page.getByRole('button', { name: 'Edit session', exact: true }).click()
+  await expect(page.getByLabel('Session amount (USD)', { exact: true })).toHaveValue('45.25')
+  await page.getByLabel('Session amount (USD)', { exact: true }).fill('0.10')
+  await page.getByRole('button', { name: 'Save session', exact: true }).click()
+  await expect(page.locator('.dashboard-metric').first()).toContainText('$0.10')
+  await page.locator('.dashboard-session-row').first().click()
+  await page.getByRole('button', { name: 'Edit session', exact: true }).click()
+  await page.getByLabel('Session amount (USD)', { exact: true }).fill('')
+  await page.getByRole('button', { name: 'Save session', exact: true }).click()
+  await page.reload()
+  await expect(page.locator('.dashboard-metric').first()).toContainText('$0.00')
+  await expect(page.getByRole('heading', { name: 'No amounts recorded yet' })).toBeVisible()
+  await chooseOption(page, 'Period', 'All time')
+  await noOverflow(page)
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+})
+
 test('clinical assistant previews context, requires review and only adds ideas on request', async ({
   page,
 }) => {
@@ -447,8 +486,8 @@ test('selects have white menus, separators, keyboard support, and work inside mo
   await expect(page.getByRole('dialog')).toBeVisible()
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-  if (await page.getByRole('button', { name: 'Open settings', exact: true }).isVisible())
-    await page.getByRole('button', { name: 'Open settings', exact: true }).click()
+  if (await page.getByRole('button', { name: /Open settings/ }).isVisible())
+    await page.getByRole('button', { name: /Open settings/ }).click()
   else await page.locator('.doctor-account').click()
   await chooseOption(page, 'Clinic time zone', 'UTC')
   await expect(page.getByRole('combobox', { name: 'Clinic time zone', exact: true })).toContainText(

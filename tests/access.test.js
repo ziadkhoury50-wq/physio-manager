@@ -38,6 +38,12 @@ test('database enforces the single doctor, ownership, private integration storag
         'utf8',
       ),
     )
+    await db.exec(
+      await readFile(
+        new URL('../supabase/migrations/202611030002_session_amounts.sql', import.meta.url),
+        'utf8',
+      ),
+    )
     await db.exec(`insert into public.app_access(doctor_user_id) values ('${doctor}');`)
     await assert.rejects(() =>
       db.exec(`insert into public.app_access(doctor_user_id) values ('${other}');`),
@@ -65,6 +71,22 @@ test('database enforces the single doctor, ownership, private integration storag
       `insert into public.sessions(patient_id, session_date, treatment, pain_score) values ('${patient}', '2026-11-01', 'Synthetic treatment', 0);`,
     )
     assert.equal((await db.query('select * from public.sessions')).rows.length, 1)
+    assert.equal(
+      (await db.query('select amount_cents from public.sessions')).rows[0].amount_cents,
+      null,
+    )
+    await db.exec('update public.sessions set amount_cents = 4525;')
+    assert.equal(
+      (await db.query('select amount_cents from public.sessions')).rows[0].amount_cents,
+      4525,
+    )
+    await assert.rejects(() => db.exec('update public.sessions set amount_cents = -1;'))
+    await assert.rejects(() => db.exec('update public.sessions set amount_cents = 100000001;'))
+    await db.exec('update public.sessions set amount_cents = 0;')
+    assert.equal(
+      (await db.query('select amount_cents from public.sessions')).rows[0].amount_cents,
+      0,
+    )
     await assert.rejects(() =>
       db.exec(
         `insert into public.sessions(patient_id, session_date, treatment, pain_score) values ('${patient}', '2026-11-01', 'Invalid pain', 11);`,

@@ -4,13 +4,13 @@ import { initials } from '../lib/dates'
 
 export function Brand() {
   return (
-    <a className="brand" href="#/calendar" aria-label="PhysioManager home">
+    <a className="brand" href="#/calendar">
       <span className="brand-mark">
         <Activity size={24} strokeWidth={2.2} />
       </span>
       <span>
         physio<span className="brand-light">manager</span>
-        <small>CLINICAL WORKSPACE</small>
+        <small aria-hidden="true">CLINICAL WORKSPACE</small>
       </span>
     </a>
   )
@@ -39,12 +39,17 @@ export function Avatar({ name, index = 0, large = false }) {
     <span className={`avatar tone-${index % 4} ${large ? 'large' : ''}`}>{initials(name)}</span>
   )
 }
-export function Field({ label, children, wide = false }) {
+export function Field({ label, children, wide = false, hint }) {
   const id = useId()
   return (
     <div className={`field ${wide ? 'wide' : ''}`}>
       <label htmlFor={id}>{label}</label>
-      {cloneElement(children, { id })}
+      {cloneElement(children, { id, ...(hint ? { 'aria-describedby': `${id}-hint` } : {}) })}
+      {hint && (
+        <small id={`${id}-hint`} className="field-hint">
+          {hint}
+        </small>
+      )}
     </div>
   )
 }

@@ -85,6 +85,10 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ## Express API
 
+### Session amounts and Dashboard
+
+Run `supabase/migrations/202611030002_session_amounts.sql` to enable optional USD amounts. Existing sessions retain null (not recorded); an explicit zero is a recorded $0 session. Values are stored as integer cents and validated in Express and PostgreSQL. The Dashboard tab shows recorded revenue, session counts, mean amount across priced sessions, unique patients seen, trends, and recent sessions. Filters use the clinic's current date and saved session dates. Recorded amounts do not establish payment status. Editing, clearing or deleting amounts updates totals; patient deletion also removes their sessions from revenue. Dashboard data uses the same doctor-only authenticated records and RLS.
+
 ### Record deletion
 
 Run `supabase/migrations/202611030001_record_deletion.sql` in Supabase SQL Editor to enable deletion. Patient profiles have a Delete patient action; recorded-session dialogs have Delete session. Both require confirmation. Deleting a patient atomically removes their session records and appointment links; deleting a session keeps the patient and links. Google Calendar events are never deleted. The RPC uses the signed-in doctor's permissions and existing RLS, and a failure rolls the entire patient deletion back.

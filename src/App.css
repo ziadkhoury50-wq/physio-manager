@@ -1848,7 +1848,9 @@ h1 {
     gap: 5px;
     font-size: 9px;
     color: #9aa999;
-    padding: 4px 25px;
+    padding: 4px 8px;
+    flex: 1;
+    min-width: 0;
     border-radius: 8px;
   }
   .mobile-nav a.active {

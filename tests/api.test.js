@@ -59,6 +59,23 @@ function fixture() {
   return { app: createApp({ services }), services, calls }
 }
 
+test('Express accepts cents and rejects invalid session amounts', async () => {
+  const { app } = fixture()
+  const body = { patient_id: patientId, session_date: '2026-11-03', treatment: 'Assessment' }
+  for (const amount of [-1, 1.5, 100000001, '45.25'])
+    await request(app)
+      .post('/api/sessions')
+      .set('Authorization', 'Bearer doctor')
+      .send({ ...body, amount_cents: amount })
+      .expect(400)
+  const response = await request(app)
+    .post('/api/sessions')
+    .set('Authorization', 'Bearer doctor')
+    .send({ ...body, amount_cents: 4525 })
+    .expect(201)
+  assert.equal(response.body.amount_cents, 4525)
+})
+
 test('Express validates deletion identifiers and delegates only doctor-owned record deletion', async () => {
   const { app, calls } = fixture()
   for (const table of ['patients', 'sessions']) {

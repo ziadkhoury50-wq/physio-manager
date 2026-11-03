@@ -10,6 +10,7 @@ import {
   Users,
   X,
   ChevronRight,
+  LayoutDashboard,
 } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { api, calendarApi } from './lib/api'
@@ -19,6 +20,8 @@ import SignIn from './components/SignIn'
 import Calendar from './components/Calendar'
 import { PatientDirectory, PatientProfile, SessionDirectory } from './components/Records'
 import WorkspaceDialogs from './components/WorkspaceDialogs'
+import Dashboard from './components/Dashboard'
+import { parseUsd } from './lib/revenue'
 import './App.css'
 
 const subscribe = (listener) => {
@@ -30,6 +33,7 @@ const navigate = (route) => {
   window.location.hash = route
 }
 const navItems = [
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
   { path: '/patients', label: 'Patients', icon: Users },
   { path: '/sessions', label: 'Sessions', icon: ClipboardList },
@@ -53,6 +57,7 @@ const newSession = {
   treatment: '',
   progress: '',
   plan: '',
+  amount: '',
 }
 
 export default function App() {
@@ -92,11 +97,13 @@ export default function App() {
     }
   })
   const [savedAt, setSavedAt] = useState(null)
-  const activeTab = route.startsWith('/patients')
-    ? '/patients'
-    : route.startsWith('/sessions')
-      ? '/sessions'
-      : '/calendar'
+  const activeTab = route.startsWith('/dashboard')
+    ? '/dashboard'
+    : route.startsWith('/patients')
+      ? '/patients'
+      : route.startsWith('/sessions')
+        ? '/sessions'
+        : '/calendar'
   const patientId = route.startsWith('/patients/') ? route.split('/')[2] : null
   const today = dateKey(now, timeZone)
 
@@ -291,7 +298,11 @@ export default function App() {
   function openSession(record, person, event) {
     setDraft(
       record
-        ? { ...record, pain_score: record.pain_score ?? '' }
+        ? {
+            ...record,
+            pain_score: record.pain_score ?? '',
+            amount: record.amount_cents == null ? '' : (record.amount_cents / 100).toFixed(2),
+          }
         : {
             ...newSession,
             session_date: event ? eventDate(event, timeZone) : dateKey(new Date(), timeZone),
@@ -328,7 +339,7 @@ export default function App() {
     const table = isPatient ? 'patients' : 'sessions'
     const fields = isPatient
       ? Object.keys(newPatient)
-      : [...Object.keys(newSession), 'calendar_id', 'event_id']
+      : [...Object.keys(newSession).filter((key) => key !== 'amount'), 'calendar_id', 'event_id']
     const record = Object.fromEntries(
       fields.map((field) => [
         field,
@@ -337,6 +348,16 @@ export default function App() {
     )
     if (isPatient) record.date_of_birth = record.date_of_birth || null
     else record.pain_score = record.pain_score === '' ? null : Number(record.pain_score)
+    if (!isPatient) {
+      try {
+        const cents = parseUsd(draft.amount)
+        if (cents != null || Object.hasOwn(draft, 'amount_cents')) record.amount_cents = cents
+      } catch (error) {
+        setFormError(error.message)
+        setSaving(false)
+        return
+      }
+    }
     if ((isPatient && !record.name) || (!isPatient && (!record.patient_id || !record.treatment))) {
       setFormError(
         isPatient
@@ -581,7 +602,7 @@ export default function App() {
             </span>
             <button
               className="mobile-account doctor-avatar"
-              aria-label="Open settings"
+              aria-label="DR: Open settings"
               onClick={openSettings}
             >
               DR
@@ -595,7 +616,7 @@ export default function App() {
               <button onClick={load}>Retry</button>
             </div>
           )}
-          {!(activeTab === '/patients' && patientId) && (
+          {activeTab !== '/dashboard' && !(activeTab === '/patients' && patientId) && (
             <div className="page-heading">
               <div>
                 <span className="eyebrow">
@@ -625,6 +646,15 @@ export default function App() {
                 {activeTab === '/patients' ? 'New patient' : 'Record session'}
               </button>
             </div>
+          )}
+          {activeTab === '/dashboard' && (
+            <Dashboard
+              sessions={data.sessions}
+              patients={data.patients}
+              today={today}
+              viewSession={viewSession}
+              loading={loading}
+            />
           )}
           {activeTab === '/calendar' && (
             <Calendar

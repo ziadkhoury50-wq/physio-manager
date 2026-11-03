@@ -15,6 +15,7 @@ import { Dialog, Field } from './UI'
 import Select from './Select'
 import './Select.css'
 import ClinicalAssistant from './ClinicalAssistant'
+import { usd } from '../lib/revenue'
 
 export default function WorkspaceDialogs({
   modal,
@@ -194,6 +195,19 @@ export default function WorkspaceDialogs({
                 onChange={(e) => update('session_date', e.target.value)}
               />
             </Field>
+            <Field
+              label="Session amount (USD)"
+              hint="Optional. Leave blank if no amount is recorded."
+            >
+              <input
+                type="text"
+                inputMode="decimal"
+                maxLength={12}
+                value={draft.amount ?? ''}
+                onChange={(e) => update('amount', e.target.value)}
+                placeholder="e.g. 50.00"
+              />
+            </Field>
             <Field label="Symptoms / how the patient feels" wide>
               <textarea
                 rows={2}
@@ -289,6 +303,9 @@ export default function WorkspaceDialogs({
         wide
       >
         <div className="detail-badges">
+          <span className="soft-badge">
+            Session amount: {draft.amount_cents == null ? 'Not recorded' : usd(draft.amount_cents)}
+          </span>
           <span className="status-pill">
             <CheckCircle2 size={13} /> Session recorded
           </span>
