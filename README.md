@@ -87,6 +87,8 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ### Session amounts and Dashboard
 
+Dashboard filters include Today, Yesterday, This week, Last week, Last 7 days, This month, Last month, This year, All time, and Custom dates. Weeks start on Monday. Custom ranges include both endpoints and require Apply dates; invalid or pending edits do not change the applied totals. The active range is displayed explicitly. Chart grouping adjusts to the range length (day, week, month or year), while all totals and recent-session rows use the identical date filter.
+
 Run `supabase/migrations/202611030002_session_amounts.sql` to enable optional USD amounts. Existing sessions retain null (not recorded); an explicit zero is a recorded $0 session. Values are stored as integer cents and validated in Express and PostgreSQL. The Dashboard tab shows recorded revenue, session counts, mean amount across priced sessions, unique patients seen, trends, and recent sessions. Filters use the clinic's current date and saved session dates. Recorded amounts do not establish payment status. Editing, clearing or deleting amounts updates totals; patient deletion also removes their sessions from revenue. Dashboard data uses the same doctor-only authenticated records and RLS.
 
 ### Record deletion

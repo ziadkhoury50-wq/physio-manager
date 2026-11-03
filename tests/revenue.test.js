@@ -1,6 +1,68 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseUsd, revenueSummary, usd } from '../src/lib/revenue.js'
+import { dashboardRange, parseUsd, revenueSummary, usd } from '../src/lib/revenue.js'
+
+test('dashboard presets handle days, Monday weeks, leap months and year boundaries', () => {
+  assert.deepEqual(dashboardRange('day', '2026-11-03'), { start: '2026-11-03', end: '2026-11-03' })
+  assert.deepEqual(dashboardRange('yesterday', '2026-01-01'), {
+    start: '2025-12-31',
+    end: '2025-12-31',
+  })
+  assert.deepEqual(dashboardRange('week', '2026-01-01'), { start: '2025-12-29', end: '2026-01-04' })
+  assert.deepEqual(dashboardRange('week', '2026-01-04'), { start: '2025-12-29', end: '2026-01-04' })
+  assert.deepEqual(dashboardRange('previousWeek', '2026-01-01'), {
+    start: '2025-12-22',
+    end: '2025-12-28',
+  })
+  assert.deepEqual(dashboardRange('last7', '2026-01-03'), {
+    start: '2025-12-28',
+    end: '2026-01-03',
+  })
+  assert.deepEqual(dashboardRange('month', '2024-02-15'), {
+    start: '2024-02-01',
+    end: '2024-02-29',
+  })
+  assert.deepEqual(dashboardRange('previous', '2026-01-01'), {
+    start: '2025-12-01',
+    end: '2025-12-31',
+  })
+})
+
+test('custom date filters include both boundaries, reject invalid dates and keep chart totals consistent', () => {
+  const sessions = ['2026-03-27', '2026-03-28', '2026-03-29', '2026-03-30'].map((date, i) => ({
+    patient_id: String(i),
+    session_date: date,
+    amount_cents: 100,
+  }))
+  const filtered = revenueSummary(sessions, 'custom', '2026-11-03', {
+    start: '2026-03-28',
+    end: '2026-03-29',
+  })
+  assert.equal(filtered.total, 200)
+  assert.equal(filtered.rows.length, 2)
+  assert.equal(filtered.granularity, 'day')
+  assert.equal(
+    filtered.buckets.reduce((sum, [, amount]) => sum + amount, 0),
+    filtered.total,
+  )
+  assert.equal(
+    revenueSummary(sessions, 'custom', '2026-11-03', { start: '2026-03-28', end: '2026-03-28' })
+      .rows.length,
+    1,
+  )
+  for (const range of [
+    { start: '', end: '' },
+    { start: '2026-02-30', end: '2026-03-03' },
+    { start: '2026-03-30', end: '2026-03-29' },
+  ])
+    assert.ok(dashboardRange('custom', '2026-11-03', range).error)
+  assert.equal(
+    revenueSummary(sessions, 'custom', '2026-11-03', { start: '', end: '' }).rows.length,
+    0,
+  )
+  assert.equal(revenueSummary(sessions, 'month', '2026-03-03').granularity, 'week')
+  assert.equal(revenueSummary(sessions, 'year', '2026-03-03').granularity, 'month')
+})
 
 test('USD input converts exactly to integer cents and distinguishes blank from zero', () => {
   assert.equal(parseUsd(''), null)

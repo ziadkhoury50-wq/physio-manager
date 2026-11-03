@@ -6,6 +6,35 @@ test.beforeEach(async ({ page }) => {
   await mockWorkspace(page)
 })
 
+test('dashboard day, week and custom filters apply valid inclusive ranges on mobile and desktop', async ({
+  page,
+}) => {
+  await page.goto('/#/dashboard')
+  await chooseOption(page, 'Period', 'Today')
+  await expect(page.locator('.dashboard-range-label')).toContainText('Showing:')
+  await chooseOption(page, 'Period', 'This week')
+  await expect(page.getByText('Recorded amounts by day', { exact: true })).toBeVisible()
+  await chooseOption(page, 'Period', 'Last week')
+  await chooseOption(page, 'Period', 'Custom dates')
+  await page.getByLabel('Start date', { exact: true }).fill('2026-01-01')
+  await page.getByLabel('End date', { exact: true }).fill('2026-12-31')
+  await expect(page.getByText('Date changes are not applied yet.', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Apply dates', exact: true }).click()
+  await expect(page.locator('.dashboard-range-label')).toContainText('January 1, 2026')
+  await expect(page.locator('.dashboard-range-label')).toContainText('December 31, 2026')
+  await page.getByLabel('Start date', { exact: true }).fill('2026-12-31')
+  await page.getByLabel('End date', { exact: true }).fill('2026-01-01')
+  await page.getByRole('button', { name: 'Apply dates', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('End date must be on or after')
+  await expect(page.locator('.dashboard-range-label')).toContainText('January 1, 2026')
+  await page.getByLabel('Start date', { exact: true }).fill('2026-11-03')
+  await page.getByLabel('End date', { exact: true }).fill('2026-11-03')
+  await page.getByRole('button', { name: 'Apply dates', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await noOverflow(page)
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+})
+
 test('session amounts persist and dashboard totals follow edits and cleared amounts', async ({
   page,
 }) => {

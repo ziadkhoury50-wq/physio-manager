@@ -1,13 +1,31 @@
 import { useState } from 'react'
 import { Wallet, ClipboardList, Users, ChartColumn, ArrowUpRight } from 'lucide-react'
-import { revenueSummary, usd } from '../lib/revenue'
+import { dashboardRange, revenueSummary, usd } from '../lib/revenue'
 import { formatDate } from '../lib/dates'
 import Select from './Select'
 import './Dashboard.css'
 
 export default function Dashboard({ sessions, patients, today, viewSession, loading }) {
   const [period, setPeriod] = useState('month')
-  const summary = revenueSummary(sessions, period, today)
+  const [custom, setCustom] = useState({ start: `${today.slice(0, 7)}-01`, end: today })
+  const [applied, setApplied] = useState(custom)
+  const [rangeError, setRangeError] = useState('')
+  const summary = revenueSummary(sessions, period, today, applied)
+  const pending = custom.start !== applied.start || custom.end !== applied.end
+  const rangeLabel = summary.range.start
+    ? `${formatDate(summary.range.start, { year: 'numeric' })}${summary.range.start === summary.range.end ? '' : ` – ${formatDate(summary.range.end, { year: 'numeric' })}`}`
+    : 'All recorded dates'
+  const bucketLabel = (key) =>
+    summary.granularity === 'year'
+      ? key
+      : formatDate(key.length === 7 ? `${key}-01` : key, {
+          day: summary.granularity === 'month' ? undefined : 'numeric',
+          month: 'short',
+          year:
+            period === 'all' || summary.range.start?.slice(0, 4) !== summary.range.end?.slice(0, 4)
+              ? '2-digit'
+              : undefined,
+        })
   const max = Math.max(1, ...summary.buckets.map(([, cents]) => cents))
   const recent = [...summary.rows]
     .sort((a, b) => b.session_date.localeCompare(a.session_date))
@@ -52,15 +70,85 @@ export default function Dashboard({ sessions, patients, today, viewSession, load
           <h1>Your work, at a glance.</h1>
           <p>Session activity and recorded amounts, together.</p>
         </div>
-        <label className="dashboard-period">
-          Period
-          <Select value={period} onChange={(e) => setPeriod(e.target.value)}>
-            <option value="month">This month</option>
-            <option value="previous">Last month</option>
-            <option value="year">This year</option>
-            <option value="all">All time</option>
-          </Select>
-        </label>
+        <div className="dashboard-filters">
+          <label className="dashboard-period">
+            Period
+            <Select
+              value={period}
+              onChange={(e) => {
+                setPeriod(e.target.value)
+                setRangeError('')
+              }}
+            >
+              <option value="day">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This week</option>
+              <option value="previousWeek">Last week</option>
+              <option value="last7">Last 7 days</option>
+              <option value="month">This month</option>
+              <option value="previous">Last month</option>
+              <option value="year">This year</option>
+              <option value="all">All time</option>
+              <option value="custom">Custom dates</option>
+            </Select>
+          </label>
+          {period === 'custom' && (
+            <div className="dashboard-custom-range">
+              <label>
+                Start date
+                <input
+                  type="date"
+                  value={custom.start}
+                  onChange={(e) => {
+                    setCustom({ ...custom, start: e.target.value })
+                    setRangeError('')
+                  }}
+                />
+              </label>
+              <label>
+                End date
+                <input
+                  type="date"
+                  min={custom.start || undefined}
+                  value={custom.end}
+                  onChange={(e) => {
+                    setCustom({ ...custom, end: e.target.value })
+                    setRangeError('')
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  const next = dashboardRange('custom', today, custom)
+                  if (next.error) {
+                    setRangeError(next.error)
+                    return
+                  }
+                  setApplied({ ...custom })
+                  setRangeError('')
+                }}
+              >
+                Apply dates
+              </button>
+              {rangeError && (
+                <p role="alert" className="dashboard-range-error">
+                  {rangeError}
+                </p>
+              )}
+              {!rangeError && pending && (
+                <p className="dashboard-range-note">Date changes are not applied yet.</p>
+              )}
+            </div>
+          )}
+          <p className="dashboard-range-label" aria-live="polite">
+            Showing: {rangeLabel}
+          </p>
+          <p className="dashboard-range-note">
+            Weeks run Monday–Sunday. Custom dates include both start and end.
+          </p>
+        </div>
       </div>
       <div className="dashboard-metrics">
         {metrics.map(({ label, value, detail, icon }) => (
@@ -78,11 +166,7 @@ export default function Dashboard({ sessions, patients, today, viewSession, load
         <div className="dashboard-section-title">
           <div>
             <h2>Revenue over time</h2>
-            <p>
-              {period === 'all' || period === 'year'
-                ? 'Recorded amounts by month'
-                : 'Recorded amounts by week of the month'}
-            </p>
+            <p>Recorded amounts by {summary.granularity}</p>
           </div>
           <span className="soft-badge">USD</span>
         </div>
@@ -99,20 +183,15 @@ export default function Dashboard({ sessions, patients, today, viewSession, load
                 className="revenue-column"
                 key={label}
                 role="listitem"
-                aria-label={`${label}: ${usd(cents)}`}
+                aria-label={`${summary.granularity === 'week' ? 'Week of ' : ''}${label}: ${usd(cents)}`}
               >
                 <span className="revenue-bar-value">{usd(cents)}</span>
                 <div className="revenue-bar-track">
                   <div className="revenue-bar" style={{ height: `${(cents / max) * 100}%` }} />
                 </div>
                 <span className="revenue-bar-label">
-                  {label.startsWith('Week')
-                    ? label
-                    : formatDate(`${label}-01`, {
-                        day: undefined,
-                        month: 'short',
-                        year: period === 'all' ? '2-digit' : undefined,
-                      })}
+                  {summary.granularity === 'week' ? 'Week of ' : ''}
+                  {bucketLabel(label)}
                 </span>
               </div>
             ))}
