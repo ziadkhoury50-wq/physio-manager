@@ -148,6 +148,8 @@ test('Express validates writes, rejects injected ownership, and preserves zero p
     patient_id: patientId,
     session_date: '2026-11-01',
     treatment: 'Movement assessment',
+    assessment: 'Visit-specific findings',
+    pain_management: 'Visit-specific plan',
     pain_score: 0,
   }
   await post('/api/sessions', { ...session, pain_score: 11 }).expect(400)
@@ -166,6 +168,8 @@ test('Express validates writes, rejects injected ownership, and preserves zero p
   assert.equal(response.body.underlying_conditions, 'Recorded condition')
   assert.equal(response.body.medication, 'Recorded medication')
   assert.equal(calls[1].record.pain_score, 0)
+  assert.equal(calls[1].record.assessment, 'Visit-specific findings')
+  assert.equal(calls[1].record.pain_management, 'Visit-specific plan')
   assert.equal(calls[0].doctor.id, doctorId)
   assert.equal('owner_id' in calls[0].record, false)
   assert.equal(calls.length, 3)

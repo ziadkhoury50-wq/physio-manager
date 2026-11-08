@@ -39,11 +39,18 @@ export function Avatar({ name, index = 0, large = false }) {
     <span className={`avatar tone-${index % 4} ${large ? 'large' : ''}`}>{initials(name)}</span>
   )
 }
-export function Field({ label, children, wide = false, hint }) {
+export function Field({ label, children, wide = false, hint, action }) {
   const id = useId()
   return (
     <div className={`field ${wide ? 'wide' : ''}`}>
-      <label htmlFor={id}>{label}</label>
+      {action ? (
+        <div className="field-label-row">
+          <label htmlFor={id}>{label}</label>
+          {action}
+        </div>
+      ) : (
+        <label htmlFor={id}>{label}</label>
+      )}
       {cloneElement(children, { id, ...(hint ? { 'aria-describedby': `${id}-hint` } : {}) })}
       {hint && (
         <small id={`${id}-hint`} className="field-hint">
@@ -53,8 +60,9 @@ export function Field({ label, children, wide = false, hint }) {
     </div>
   )
 }
-export function Dialog({ title, subtitle, onClose, children, wide = false }) {
+export function Dialog({ title, subtitle, onClose, children, wide = false, className = '' }) {
   const ref = useRef(null)
+  const titleId = useId()
   useLayoutEffect(() => {
     const previous = document.activeElement
     const dialog = ref.current
@@ -68,9 +76,10 @@ export function Dialog({ title, subtitle, onClose, children, wide = false }) {
   return (
     <dialog
       ref={ref}
-      className={`dialog ${wide ? 'dialog-wide' : ''}`}
+      className={`dialog ${wide ? 'dialog-wide' : ''} ${className}`}
       onCancel={(event) => {
         event.preventDefault()
+        event.stopPropagation()
         onClose()
       }}
       onClick={(event) => {
@@ -85,12 +94,12 @@ export function Dialog({ title, subtitle, onClose, children, wide = false }) {
             onClose()
         }
       }}
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
       aria-modal="true"
     >
       <div className="dialog-header">
         <div>
-          <h2 id="dialog-title">{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
         </div>
         <IconButton label="Close" onClick={onClose}>

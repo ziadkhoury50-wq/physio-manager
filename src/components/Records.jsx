@@ -18,6 +18,7 @@ import { formatDate } from '../lib/dates'
 import { Avatar, Empty } from './UI'
 import { usd } from '../lib/revenue'
 import './PatientProfile.css'
+import SessionProgress, { ProgressMetrics } from './SessionProgress'
 
 export function SessionCard({ session, patient, onClick }) {
   return (
@@ -229,6 +230,7 @@ export function PatientProfile({
           </div>
         </aside>
         <div className="profile-content">
+          <ProgressMetrics sessions={records} />
           <div
             className="patient-profile-tabs"
             role="tablist"
@@ -276,84 +278,74 @@ export function PatientProfile({
             hidden={profileTab !== 'assessment'}
             tabIndex={0}
           >
-            <div className="section-heading">
-              <h2>Assessment & pain management</h2>
+            <SessionProgress
+              records={records}
+              patient={patient}
+              openSession={openSession}
+              viewSession={viewSession}
+            />
+            <details className="patient-background">
+              <summary>Patient background</summary>
               <button
                 className="button secondary"
                 disabled={saving}
                 onClick={() => openPatient(patient)}
               >
-                Edit assessment
+                Edit patient background
               </button>
-            </div>
-            <div className="profile-notes">
-              {[
-                ['Presenting condition', patient.condition, 'No presenting condition recorded.'],
-                ['Symptoms', patient.symptoms, 'No symptoms recorded yet.'],
-                ['Assessment findings', patient.assessment, 'No assessment findings recorded yet.'],
-                [
-                  'Pain management plan',
-                  patient.pain_management,
-                  'No pain management plan recorded yet.',
-                ],
-              ].map(([label, text, empty]) => (
-                <section className="panel" key={label}>
+              <div className="profile-notes">
+                {[
+                  ['Presenting condition', patient.condition, 'No presenting condition recorded.'],
+                  ['Symptoms', patient.symptoms, 'No symptoms recorded yet.'],
+                  [
+                    'Previous patient-level assessment',
+                    patient.assessment,
+                    'No previous patient-level assessment.',
+                  ],
+                  [
+                    'Previous patient-level pain plan',
+                    patient.pain_management,
+                    'No pain management plan recorded yet.',
+                  ],
+                ].map(([label, text, empty]) => (
+                  <section className="panel" key={label}>
+                    <span className="note-icon">
+                      <Activity size={18} />
+                    </span>
+                    <h3>{label}</h3>
+                    <p>{text || empty}</p>
+                  </section>
+                ))}
+                <section className="panel">
                   <span className="note-icon">
                     <Activity size={18} />
                   </span>
-                  <h3>{label}</h3>
-                  <p>{text || empty}</p>
+                  <h3>Underlying conditions</h3>
+                  <p>{patient.underlying_conditions || 'No underlying conditions recorded.'}</p>
                 </section>
-              ))}
-              <section className="panel">
-                <span className="note-icon">
-                  <Activity size={18} />
-                </span>
-                <h3>Underlying conditions</h3>
-                <p>{patient.underlying_conditions || 'No underlying conditions recorded.'}</p>
-              </section>
-              <section className="panel">
-                <span className="note-icon">
-                  <ClipboardList size={18} />
-                </span>
-                <h3>Medication</h3>
-                <p>{patient.medication || 'No medication recorded.'}</p>
-              </section>
-              <section className="panel">
-                <span className="note-icon">
-                  <FileText size={18} />
-                </span>
-                <h3>Relevant history</h3>
-                <p>{patient.history || 'No history recorded yet.'}</p>
-              </section>
-              <section className="panel">
-                <span className="note-icon">
-                  <Activity size={18} />
-                </span>
-                <h3>Treatment goals</h3>
-                <p>{patient.goals || 'No goals recorded yet.'}</p>
-              </section>
-            </div>
-            <section className="panel patient-pain-history">
-              <h3>Recorded session pain scores</h3>
-              <p>Most recent recorded scores. Open a session for its notes and context.</p>
-              {records.filter((item) => item.pain_score != null).length ? (
-                <div className="patient-pain-list">
-                  {records
-                    .filter((item) => item.pain_score != null)
-                    .slice(0, 5)
-                    .map((session) => (
-                      <button type="button" key={session.id} onClick={() => viewSession(session)}>
-                        <span>{formatDate(session.session_date, { year: 'numeric' })}</span>
-                        <strong>{session.pain_score}/10</strong>
-                        <ChevronRight size={15} />
-                      </button>
-                    ))}
-                </div>
-              ) : (
-                <p>No session pain scores recorded yet.</p>
-              )}
-            </section>
+                <section className="panel">
+                  <span className="note-icon">
+                    <ClipboardList size={18} />
+                  </span>
+                  <h3>Medication</h3>
+                  <p>{patient.medication || 'No medication recorded.'}</p>
+                </section>
+                <section className="panel">
+                  <span className="note-icon">
+                    <FileText size={18} />
+                  </span>
+                  <h3>Relevant history</h3>
+                  <p>{patient.history || 'No history recorded yet.'}</p>
+                </section>
+                <section className="panel">
+                  <span className="note-icon">
+                    <Activity size={18} />
+                  </span>
+                  <h3>Treatment goals</h3>
+                  <p>{patient.goals || 'No goals recorded yet.'}</p>
+                </section>
+              </div>
+            </details>
           </section>
           <section
             className="patient-profile-panel"

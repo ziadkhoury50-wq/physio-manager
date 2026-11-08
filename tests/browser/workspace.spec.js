@@ -6,7 +6,104 @@ test.beforeEach(async ({ page }) => {
   await mockWorkspace(page)
 })
 
-test('patient age symptoms and assessment tabs persist and support keyboard navigation', async ({
+test('session progress and field AI popups preserve notes and require review before insertion', async ({
+  page,
+}) => {
+  test.setTimeout(60000)
+  const requests = []
+  await page.route('**/api/clinical-assistant', async (route) => {
+    requests.push(route.request().postDataJSON())
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        overview: 'Options for clinician review.',
+        questions: ['Clarify restrictions.'],
+        safety: ['Review precautions.'],
+        assessments: [
+          {
+            name: 'Movement option',
+            purpose: 'Review tolerated movement.',
+            approach: 'Clinician-selected movement details.',
+            limitations: 'Requires examination and clinician judgment.',
+            sourceIds: [],
+          },
+        ],
+        uncertainties: ['No objective measurements supplied.'],
+        sources: [],
+        evidenceWarning: 'No retrieved citation in this test.',
+        modelUsed: 'test-model',
+      }),
+    })
+  })
+  await page.goto('/#/patients/demo-1')
+  await expect(page.locator('.patient-progress-metrics')).toContainText('-2 pts')
+  await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
+  await page.getByRole('button', { name: 'Record session', exact: true }).click()
+  await page
+    .getByLabel('Assessment findings', { exact: true })
+    .fill('Measured movement documented by clinician.')
+  await page.getByRole('spinbutton', { name: /Pain score/ }).fill('2')
+  await page
+    .getByLabel('Treatment performed *', { exact: true })
+    .fill('Supervised mobility actually delivered.')
+  await page
+    .getByLabel('Pain management plan', { exact: true })
+    .fill('Agreed pacing and review at next visit.')
+  await page.getByRole('button', { name: 'AI help for assessment findings', exact: true }).click()
+  const assessmentPopup = page.getByRole('dialog', { name: 'Assessment help', exact: true })
+  await expect(assessmentPopup).toBeVisible()
+  expect(requests.length).toBe(0)
+  await expect(
+    assessmentPopup.getByRole('button', { name: 'Suggest assessments', exact: true }),
+  ).toBeDisabled()
+  await assessmentPopup.getByRole('checkbox', { name: /I reviewed both fields/ }).check()
+  await assessmentPopup.getByRole('button', { name: 'Suggest assessments', exact: true }).click()
+  await assessmentPopup.getByRole('button', { name: 'Add assessment idea', exact: true }).click()
+  await assessmentPopup.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByLabel('Assessment findings', { exact: true })).toHaveValue(
+    /Measured movement documented by clinician\.[\s\S]*Assessment consideration for clinician review/,
+  )
+  await page.getByRole('button', { name: 'AI help for treatment performed', exact: true }).click()
+  const treatmentPopup = page.getByRole('dialog', {
+    name: 'Exercise & treatment ideas',
+    exact: true,
+  })
+  await treatmentPopup.getByRole('checkbox', { name: /I reviewed both fields/ }).check()
+  await treatmentPopup
+    .getByRole('button', { name: 'Suggest exercises & treatment', exact: true })
+    .click()
+  await expect(
+    treatmentPopup.getByRole('button', { name: 'Add to performed treatment', exact: true }),
+  ).toBeDisabled()
+  await expect(
+    treatmentPopup.getByRole('button', { name: 'Add to next-session plan', exact: true }),
+  ).toBeEnabled()
+  await treatmentPopup.getByRole('checkbox', { name: /I reviewed the details/ }).check()
+  await treatmentPopup
+    .getByRole('button', { name: 'Add to performed treatment', exact: true })
+    .click()
+  await treatmentPopup.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByLabel('Treatment performed *', { exact: true })).toHaveValue(
+    /Supervised mobility actually delivered\.[\s\S]*Clinician-confirmed treatment/,
+  )
+  expect(requests.map((request) => request.mode)).toEqual(['assessment', 'treatment'])
+  expect(requests[0].context).not.toContain('Nadia Farah')
+  await page.getByRole('button', { name: 'Save session', exact: true }).click()
+  await expect(page.locator('.patient-progress-metrics')).toContainText('2/10')
+  await expect(page.locator('.patient-progress-metrics')).toContainText('-4 pts')
+  await page.reload()
+  await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
+  await expect(page.locator('.session-assessment-card').first()).toContainText(
+    'Measured movement documented by clinician.',
+  )
+  await expect(page.locator('.session-assessment-card').first()).toContainText(
+    'Agreed pacing and review at next visit.',
+  )
+  await expect(page.getByRole('img', { name: /Recorded pain scores/ })).toBeVisible()
+  await noOverflow(page)
+})
+
+test('patient age and background symptoms persist with accessible equal profile tabs', async ({
   page,
 }) => {
   await page.goto('/#/patients')
@@ -15,47 +112,31 @@ test('patient age symptoms and assessment tabs persist and support keyboard navi
   await page.getByLabel('Full name *', { exact: true }).fill('Assessment Test Patient')
   await page.getByLabel('Age', { exact: true }).fill('34')
   await page.getByLabel('Symptoms', { exact: true }).fill('Discomfort on reaching overhead.')
-  await page
-    .getByLabel('Assessment findings', { exact: true })
-    .fill('Active movement findings recorded by clinician.')
-  await page
-    .getByLabel('Pain management plan', { exact: true })
-    .fill('Agreed activity modification and review.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.getByText('34 years', { exact: true })).toBeVisible()
   const historyTab = page.getByRole('tab', { name: 'Session history', exact: true })
   const assessmentTab = page.getByRole('tab', { name: 'Assessment & pain management', exact: true })
-  await expect(historyTab).toHaveAttribute('aria-selected', 'true')
   await historyTab.focus()
   await page.keyboard.press('ArrowRight')
   await expect(assessmentTab).toHaveAttribute('aria-selected', 'true')
+  const aBox = await historyTab.boundingBox(),
+    bBox = await assessmentTab.boundingBox()
+  expect(Math.abs(aBox.width - bBox.width)).toBeLessThan(1)
+  await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Discomfort on reaching overhead.', { exact: true })).toBeVisible()
-  await expect(
-    page.getByText('Active movement findings recorded by clinician.', { exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.getByText('Agreed activity modification and review.', { exact: true }),
-  ).toBeVisible()
-  await noOverflow(page)
-  await page.getByRole('button', { name: 'Edit assessment', exact: true }).click()
-  await expect(page.getByLabel('Age', { exact: true })).toHaveValue('34')
+  await page.getByRole('button', { name: 'Edit patient', exact: true }).click()
   await page.getByLabel('Age', { exact: true }).fill('0')
   await page.getByLabel('Symptoms', { exact: true }).fill('Updated symptoms recorded.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await page.reload()
   await expect(page.getByText('0 years', { exact: true })).toBeVisible()
   await assessmentTab.click()
+  await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Updated symptoms recorded.', { exact: true })).toBeVisible()
-  await expect(
-    page.getByText('Agreed activity modification and review.', { exact: true }),
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Edit assessment', exact: true }).click()
+  await page.getByRole('button', { name: 'Edit patient', exact: true }).click()
   await page.getByLabel('Age', { exact: true }).fill('')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.locator('.patient-information')).toContainText('Not provided')
-  await historyTab.click()
-  await expect(assessmentTab).toHaveAttribute('aria-selected', 'false')
-  await expect(page.getByText('Updated symptoms recorded.', { exact: true })).not.toBeVisible()
   await noOverflow(page)
 })
 
@@ -337,6 +418,7 @@ test('create, edit, archive, and restore a patient without losing history', asyn
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Maya Test', exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
+  await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Returning after an ankle injury.', { exact: true })).toBeVisible()
   await expect(page.getByText('Dr. Referral', { exact: true })).toBeVisible()
   await expect(page.getByText('Recorded underlying condition', { exact: true })).toBeVisible()
@@ -353,6 +435,7 @@ test('create, edit, archive, and restore a patient without losing history', asyn
   await page.getByRole('button', { name: 'Archived', exact: true }).click()
   await page.getByRole('link', { name: /Maya Test/ }).click()
   await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
+  await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Walk comfortably.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Restore patient', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Archive patient', exact: true })).toBeVisible()

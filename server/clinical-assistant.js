@@ -6,6 +6,7 @@ export const clinicalInput = z
     topic: z.string().trim().min(3).max(180),
     context: z.string().trim().min(10).max(14000),
     reviewed: z.literal(true),
+    mode: z.enum(['assessment', 'treatment']).default('assessment'),
   })
   .strict()
 const strings = z.array(z.string().max(1800)).max(8)
@@ -155,14 +156,18 @@ export function createClinicalAssistant({
         503,
         'The clinical assistant needs a Gemini API key in the server environment.',
       )
-    const { topic, context } = clinicalInput.parse(input)
+    const { topic, context, mode } = clinicalInput.parse(input)
     let sources = []
     let literature = 'No retrieved evidence.'
     let evidenceWarning = ''
     try {
       const root = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
       // Only the doctor-reviewed generic search topic goes to PubMed, never the case text.
-      const term = `${topic.replace(/[^\p{L}\p{N}\s-]/gu, ' ')} AND (assessment OR diagnosis) AND (systematic review[pt] OR practice guideline[pt] OR diagnostic accuracy)`
+      const focus =
+        mode === 'treatment'
+          ? '(exercise OR rehabilitation OR physiotherapy) AND (systematic review[pt] OR practice guideline[pt] OR clinical trial[pt])'
+          : '(assessment OR diagnosis) AND (systematic review[pt] OR practice guideline[pt] OR diagnostic accuracy)'
+      const term = `${topic.replace(/[^\p{L}\p{N}\s-]/gu, ' ')} AND ${focus}`
       const search = await getJson(
         fetcher,
         `${root}esearch.fcgi?db=pubmed&retmode=json&retmax=6&sort=relevance&term=${encodeURIComponent(term)}`,
@@ -204,7 +209,17 @@ export function createClinicalAssistant({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: CLINICAL_PROMPT }] },
+          systemInstruction: {
+            parts: [
+              {
+                text:
+                  CLINICAL_PROMPT +
+                  (mode === 'treatment'
+                    ? '\nFor this request, focus the assessments array on candidate exercise and treatment options instead of examination tests. Explain purpose, prerequisites, precautions, stopping criteria and progression considerations. Ask for missing surgical restrictions and examination findings where relevant. Avoid prescribing a fixed exercise dose without adequate context and evidence. Never claim an exercise was performed, safe for this individual, or tolerated unless explicitly documented. Present options for clinician selection, not an individualized prescription.'
+                    : '\nFocus on candidate examinations and how to document the clinician’s actual findings. Never invent measurements or positive/negative results.'),
+              },
+            ],
+          },
           contents: [
             {
               role: 'user',

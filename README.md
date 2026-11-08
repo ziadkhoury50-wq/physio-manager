@@ -87,9 +87,13 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ### Patient age and clinical tabs
 
+For visit-based assessment and pain management, also run `supabase/migrations/202611080002_session_assessments.sql`. Each session stores its own assessment findings and pain-management plan. The profile's equal-width tabs retain session history and add a progress workspace: recorded visit count, latest available pain score, numeric change from the first available pain score, last visit, a chronological pain plot and visit-by-visit clinical notes. Missing scores are not zero; a change needs two recorded scores. Patient-level notes remain available under Patient background and are not copied into historical sessions.
+
+Assessment findings and Treatment performed in the session form each have AI help. These open a side dialog on desktop and a bottom sheet on phones. The doctor reviews the selected context before requesting assessment ideas or exercise/treatment options through the existing doctor-authenticated Gemini endpoint. Suggestions are never saved automatically. Assessment additions are labelled as considerations, not completed findings. Treatment insertion requires confirmation that the intervention actually occurred; proposed exercises can instead be added to the next-session plan. Existing text is appended to, not replaced, and the 10,000-character field limit is enforced. No additional database field or new Gemini key is needed for the popup.
+
 Run `supabase/migrations/202611080001_patient_assessment.sql` before deploying these patient fields. The migration adds age (optional whole years, 0–130), patient symptoms, assessment findings and a pain-management plan. Historical birth dates are retained in the database and converted to age once when the column is first created, using the clinic date. The app then stores age as recorded; it is not automatically incremented. Re-running the migration preserves an intentionally cleared age.
 
-Patient profiles have keyboard-accessible Session history and Assessment & pain management tabs. The latter displays the patient clinical fields and up to five recent recorded session pain scores, including zero. Edit assessment opens the patient form. The optional Gemini preview includes these clinical fields for doctor review, with names, contact details and historical birth dates excluded.
+Patient profiles have keyboard-accessible Session history and Assessment & pain management tabs. The latter displays per-session progress and visit notes; Patient background contains the retained patient-level clinical information. Each visit can be edited independently. The optional Gemini preview includes these clinical fields for doctor review, with names, contact details and historical birth dates excluded.
 
 ### Session amounts and Dashboard
 

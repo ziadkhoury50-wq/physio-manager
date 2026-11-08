@@ -62,8 +62,33 @@ const output = {
   uncertainties: ['Limited history.'],
 }
 test('clinical input requires review and rejects patient identifiers as extra fields', () => {
+  assert.equal(clinicalInput.safeParse({ ...input, mode: 'unknown' }).success, false)
   assert.equal(clinicalInput.safeParse({ ...input, reviewed: false }).success, false)
   assert.equal(clinicalInput.safeParse({ ...input, patientName: 'Private name' }).success, false)
+})
+
+test('treatment help uses exercise literature and a prompt that does not invent delivered care', async () => {
+  let query = '',
+    instructions = ''
+  const assistant = createClinicalAssistant({
+    key: 'test-secret',
+    fetcher: async (url, options) => {
+      if (url.includes('esearch')) {
+        query = decodeURIComponent(url)
+        return Response.json({ esearchresult: { idlist: [] } })
+      }
+      instructions = JSON.parse(options.body).systemInstruction.parts[0].text
+      return Response.json({
+        candidates: [
+          { finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(output) }] } },
+        ],
+      })
+    },
+  })
+  await assistant({ ...input, mode: 'treatment' })
+  assert.match(query, /exercise OR rehabilitation/)
+  assert.match(instructions, /Never claim an exercise was performed/)
+  assert.match(instructions, /Avoid prescribing a fixed exercise dose/)
 })
 test('clinical assistant keeps key in request header and allows only retrieved citation IDs', async () => {
   let geminiRequest

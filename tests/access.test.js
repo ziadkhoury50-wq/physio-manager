@@ -76,6 +76,12 @@ test('database enforces the single doctor, ownership, private integration storag
       null,
     )
     await db.exec(`delete from public.patients where id = '${legacyPatient}';`)
+    await db.exec(
+      await readFile(
+        new URL('../supabase/migrations/202611080002_session_assessments.sql', import.meta.url),
+        'utf8',
+      ),
+    )
     await db.exec(`insert into public.app_access(doctor_user_id) values ('${doctor}');`)
     await assert.rejects(() =>
       db.exec(`insert into public.app_access(doctor_user_id) values ('${other}');`),
@@ -103,6 +109,19 @@ test('database enforces the single doctor, ownership, private integration storag
       `insert into public.sessions(patient_id, session_date, treatment, pain_score) values ('${patient}', '2026-11-01', 'Synthetic treatment', 0);`,
     )
     assert.equal((await db.query('select * from public.sessions')).rows.length, 1)
+    assert.deepEqual(
+      (await db.query('select assessment, pain_management from public.sessions')).rows[0],
+      { assessment: '', pain_management: '' },
+    )
+    await db.exec(
+      "update public.sessions set assessment = 'Visit findings', pain_management = 'Visit pain plan';",
+    )
+    await assert.rejects(() =>
+      db.exec("update public.sessions set assessment = repeat('x', 10001);"),
+    )
+    await assert.rejects(() =>
+      db.exec("update public.sessions set pain_management = repeat('x', 10001);"),
+    )
     await db.exec(
       `update public.patients set age = 0, symptoms = 'Recorded symptoms', assessment = 'Recorded findings', pain_management = 'Recorded plan';`,
     )

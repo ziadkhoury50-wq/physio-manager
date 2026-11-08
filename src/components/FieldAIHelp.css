@@ -1,0 +1,57 @@
+.field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.field-label-row > label {
+  font-size: 12px;
+  font-weight: 550;
+  color: #526b5b;
+}
+.field-ai-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: #315f49;
+  font: inherit;
+  font-size: 11px;
+  padding: 7px 10px;
+  border: 1px solid #d0ded1;
+  border-radius: 7px;
+  background: #f3f8ef;
+}
+.field-ai-trigger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dialog.ai-field-popup {
+  position: fixed;
+  inset: 16px 16px 16px auto;
+  width: min(540px, calc(100% - 32px));
+  margin: auto 0;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.ai-field-popup .clinical-assistant {
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+.ai-field-popup .clinical-body {
+  padding: 0;
+}
+.ai-field-popup .clinical-card button {
+  min-height: 36px;
+}
+@media (max-width: 760px) {
+  .dialog.ai-field-popup {
+    inset: auto 0 0;
+    width: 100%;
+    max-height: 90dvh;
+    margin: 0;
+    padding: 22px 18px max(24px, env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+}

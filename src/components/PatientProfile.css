@@ -4,7 +4,7 @@
 }
 .patient-profile-tabs {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   padding: 5px;
   border: 1px solid #dfe8df;
@@ -90,7 +90,7 @@
 @media (max-width: 600px) {
   .patient-profile-tabs {
     gap: 4px;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .patient-profile-tabs button {
     font-size: 11px;
@@ -100,5 +100,161 @@
   }
   .patient-pain-history {
     padding: 18px;
+  }
+}
+
+.patient-progress-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.patient-progress-metrics > section {
+  border: 1px solid #dfe8df;
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 0;
+}
+.patient-progress-metrics span {
+  display: block;
+  font-size: 11px;
+  color: #526b5b;
+}
+.patient-progress-metrics strong {
+  display: block;
+  font-size: 23px;
+  font-weight: 600;
+  margin: 14px 0 8px;
+  overflow-wrap: anywhere;
+  letter-spacing: -0.5px;
+}
+.patient-progress-metrics small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.7;
+  color: #526b5b;
+}
+.session-progress-workspace {
+  display: grid;
+  gap: 22px;
+}
+.progress-caption {
+  font-size: 12px;
+  color: #526b5b;
+  line-height: 1.8;
+  margin-top: 8px;
+}
+.session-pain-chart {
+  padding: 22px;
+}
+.session-pain-chart h3,
+.session-assessment-history > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.session-pain-chart > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 12px;
+}
+.progress-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 28px 18px;
+  color: #526b5b;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.session-assessment-card {
+  margin-top: 14px;
+  padding: 18px;
+}
+.session-assessment-card summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 12px;
+}
+.session-assessment-card summary > span:first-child {
+  min-width: 0;
+}
+.session-assessment-card summary small {
+  display: block;
+  margin-top: 7px;
+  color: #526b5b;
+  line-height: 1.7;
+}
+.session-assessment-notes {
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid #dfe8df;
+  padding-top: 18px;
+  margin-top: 18px;
+}
+.session-assessment-notes h4 {
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+.session-assessment-notes p {
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #526b5b;
+}
+.session-assessment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.patient-background {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid #dfe8df;
+}
+.patient-background > summary {
+  color: #365740;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+.patient-background > .button {
+  margin-bottom: 18px;
+}
+@media (max-width: 1000px) {
+  .patient-progress-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .patient-progress-metrics {
+    gap: 8px;
+  }
+  .patient-progress-metrics > section {
+    padding: 14px;
+  }
+  .patient-progress-metrics strong {
+    font-size: 21px;
+  }
+  .session-assessment-card,
+  .session-pain-chart {
+    padding: 16px;
+  }
+  .session-assessment-card summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .session-pain-chart > svg {
+    min-height: 120px;
   }
 }

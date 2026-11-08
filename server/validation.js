@@ -30,6 +30,8 @@ export const sessionSchema = z
   .object({
     patient_id: uuid,
     session_date: date,
+    assessment: text.optional(),
+    pain_management: text.optional(),
     symptoms: text.optional(),
     pain_score: z.number().int().min(0).max(10).nullable().optional(),
     amount_cents: z.number().int().min(0).max(100000000).nullable().optional(),

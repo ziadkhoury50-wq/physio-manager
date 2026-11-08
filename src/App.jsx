@@ -44,8 +44,6 @@ const newPatient = {
   referred_by: '',
   age: '',
   symptoms: '',
-  assessment: '',
-  pain_management: '',
   condition: '',
   underlying_conditions: '',
   medication: '',
@@ -55,6 +53,8 @@ const newPatient = {
 const newSession = {
   patient_id: '',
   session_date: '',
+  assessment: '',
+  pain_management: '',
   symptoms: '',
   pain_score: '',
   treatment: '',

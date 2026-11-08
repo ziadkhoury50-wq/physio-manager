@@ -2,11 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { BookOpen, ChevronDown, ClipboardPlus, LoaderCircle } from 'lucide-react'
 import { api } from '../lib/api'
 import './ClinicalAssistant.css'
+import { clinicalContext } from '../lib/clinical-context'
 
-export default function ClinicalAssistant({ patient, sessions, draft, update }) {
-  const [open, setOpen] = useState(false)
+export default function ClinicalAssistant({
+  patient,
+  sessions,
+  draft,
+  update,
+  mode = 'assessment',
+  initiallyOpen = false,
+  insertionTarget = 'plan',
+}) {
+  const [open, setOpen] = useState(initiallyOpen)
   const [topic, setTopic] = useState((patient.condition || '').slice(0, 180))
-  const [context, setContext] = useState('')
+  const [context, setContext] = useState(() =>
+    initiallyOpen ? clinicalContext(patient, sessions, draft) : '',
+  )
+  const [performed, setPerformed] = useState(false)
   const [reviewed, setReviewed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -21,40 +33,7 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
     }
   }, [])
   function prepare() {
-    const history = sessions
-      .filter((s) => s.patient_id === patient.id && s.id !== draft.id)
-      .sort((a, b) => b.session_date.localeCompare(a.session_date))
-      .slice(0, 3)
-    const clinicalFields = [
-      'age',
-      'condition',
-      'symptoms',
-      'assessment',
-      'pain_management',
-      'underlying_conditions',
-      'medication',
-      'history',
-      'goals',
-    ]
-    const todayFields = ['symptoms', 'pain_score', 'treatment', 'progress', 'plan']
-    const lines = clinicalFields
-      .filter((key) => patient[key] != null && patient[key] !== '')
-      .map((key) => `${key.replaceAll('_', ' ')}: ${patient[key]}`)
-    lines.push('\nCurrent session draft:')
-    lines.push(
-      ...todayFields
-        .filter((key) => draft[key] !== '' && draft[key] != null)
-        .map((key) => `${key.replaceAll('_', ' ')}: ${draft[key]}`),
-    )
-    history.forEach((s, i) => {
-      lines.push(`\nPrevious session ${i + 1} (most recent first):`)
-      lines.push(
-        ...todayFields
-          .filter((key) => s[key] !== '' && s[key] != null)
-          .map((key) => `${key.replaceAll('_', ' ')}: ${s[key]}`),
-      )
-    })
-    setContext(lines.join('\n').slice(0, 14000))
+    setContext(clinicalContext(patient, sessions, draft))
     setReviewed(false)
     setResult(null)
     setError('')
@@ -65,10 +44,11 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
     setResult(null)
     setAdded([])
     setFullAdded(false)
+    setPerformed(false)
     try {
       const response = await api('/clinical-assistant', {
         method: 'POST',
-        body: { topic, context, reviewed },
+        body: { topic, context, reviewed, mode },
       })
       if (mounted.current) setResult(response)
     } catch (e) {
@@ -77,19 +57,23 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
       if (mounted.current) setBusy(false)
     }
   }
-  function addIdea(item, index) {
-    const text = `Assessment idea for clinician review: ${item.name} — ${item.purpose}`
-    const plan = [draft.plan, text].filter(Boolean).join('\n\n')
-    if (plan.length > 10000) {
-      setError('The session plan is full. Shorten it before adding an idea.')
+  function addIdea(item, index, target = insertionTarget) {
+    if (target === 'treatment' && !performed) return
+    const text =
+      target === 'plan'
+        ? `${mode === 'treatment' ? 'Exercise/treatment option' : 'Assessment idea'} for clinician review: ${item.name} - ${item.purpose}${mode === 'treatment' ? `\nApproach: ${item.approach}\nPrecautions and limitations: ${item.limitations}${item.sourceIds.length ? '\nSources: ' + item.sourceIds.map((id) => 'PMID ' + id).join(', ') : ''}` : ''}`
+        : `${target === 'treatment' ? 'Clinician-confirmed treatment' : 'Assessment consideration for clinician review'}: ${item.name}\nPurpose: ${item.purpose}\nApproach: ${item.approach}\nLimitations: ${item.limitations}${item.sourceIds.length ? '\nSources: ' + item.sourceIds.map((id) => 'PMID ' + id).join(', ') : ''}`
+    const value = [draft[target], text].filter(Boolean).join('\n\n')
+    if (value.length > 10000) {
+      setError('This field is full. Shorten it before adding an idea.')
       return
     }
-    update('plan', plan)
+    update(target, value)
     setAdded((old) => [...old, index])
   }
   function addFullGuide() {
     const lines = [
-      'ASSESSMENT GUIDE — draft for clinician review; not a record of care delivered.',
+      `${mode === 'treatment' ? 'TREATMENT OPTIONS' : 'ASSESSMENT GUIDE'} — draft for clinician review; not a record of care delivered.`,
       result.overview,
     ]
     for (const [label, items] of [
@@ -99,7 +83,9 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
     ]) {
       lines.push(`\n${label}`, ...items.map((text) => `• ${text}`))
     }
-    lines.push('\nCandidate assessments')
+    lines.push(
+      mode === 'treatment' ? '\nExercise and treatment options' : '\nCandidate assessments',
+    )
     for (const item of result.assessments)
       lines.push(
         `\n${item.name}`,
@@ -128,22 +114,24 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
   }
   return (
     <section className="clinical-assistant">
-      <button
-        type="button"
-        className="clinical-toggle"
-        aria-expanded={open}
-        onClick={() => {
-          if (!open && !context) prepare()
-          setOpen(!open)
-        }}
-      >
-        <BookOpen size={18} />
-        <span>
-          <strong>Assessment ideas</strong>
-          <small>Clinical context, questions, and supporting literature</small>
-        </span>
-        <ChevronDown size={17} />
-      </button>
+      {!initiallyOpen && (
+        <button
+          type="button"
+          className="clinical-toggle"
+          aria-expanded={open}
+          onClick={() => {
+            if (!open && !context) prepare()
+            setOpen(!open)
+          }}
+        >
+          <BookOpen size={18} />
+          <span>
+            <strong>Assessment ideas</strong>
+            <small>Clinical context, questions, and supporting literature</small>
+          </span>
+          <ChevronDown size={17} />
+        </button>
+      )}
       {open && (
         <div className="clinical-body">
           <p>
@@ -202,7 +190,11 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
             onClick={generate}
           >
             {busy ? <LoaderCircle size={16} className="spin" /> : <BookOpen size={16} />}
-            {busy ? 'Reviewing literature…' : 'Suggest assessments'}
+            {busy
+              ? 'Reviewing literature…'
+              : mode === 'treatment'
+                ? 'Suggest exercises & treatment'
+                : 'Suggest assessments'}
           </button>
           {error && (
             <p className="form-error" role="alert">
@@ -216,6 +208,19 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
                 a diagnosis.
               </p>
               <p>{result.overview}</p>
+              {insertionTarget === 'treatment' && (
+                <label className="clinical-consent">
+                  <input
+                    type="checkbox"
+                    checked={performed}
+                    onChange={(e) => setPerformed(e.target.checked)}
+                  />
+                  <span>
+                    I reviewed the details and confirm that any treatment I insert was actually
+                    performed. Planned exercises can be added to the next-session plan instead.
+                  </span>
+                </label>
+              )}
               <button
                 type="button"
                 className="button secondary"
@@ -250,7 +255,9 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
                   ),
               )}
               <section>
-                <h3>Candidate assessments</h3>
+                <h3>
+                  {mode === 'treatment' ? 'Exercise & treatment options' : 'Candidate assessments'}
+                </h3>
                 {result.assessments.map((item, i) => (
                   <article className="clinical-card" key={i}>
                     <h4>{item.name}</h4>
@@ -280,12 +287,30 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
                     <button
                       type="button"
                       className="text-link"
-                      disabled={added.includes(i)}
+                      disabled={
+                        added.includes(i) || (insertionTarget === 'treatment' && !performed)
+                      }
                       onClick={() => addIdea(item, i)}
                     >
                       <ClipboardPlus size={14} />
-                      {added.includes(i) ? 'Added to plan' : 'Add idea to session plan'}
+                      {added.includes(i)
+                        ? 'Added'
+                        : insertionTarget === 'treatment'
+                          ? 'Add to performed treatment'
+                          : insertionTarget === 'assessment'
+                            ? 'Add assessment idea'
+                            : 'Add idea to session plan'}
                     </button>
+                    {insertionTarget === 'treatment' && (
+                      <button
+                        type="button"
+                        className="text-link"
+                        disabled={added.includes(i)}
+                        onClick={() => addIdea(item, i, 'plan')}
+                      >
+                        Add to next-session plan
+                      </button>
+                    )}
                   </article>
                 ))}
               </section>

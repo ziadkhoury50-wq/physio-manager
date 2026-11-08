@@ -90,7 +90,7 @@ export function createServices(config) {
             if (table === 'sessions')
               throw new HttpError(
                 503,
-                'Session amounts need the database update. Run 202611030002_session_amounts.sql in Supabase SQL Editor, then retry.',
+                'Session fields need the database updates. Run 202611030002_session_amounts.sql and 202611080002_session_assessments.sql in Supabase SQL Editor, then retry.',
               )
             throw migrationError()
           }

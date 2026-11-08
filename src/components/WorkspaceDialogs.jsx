@@ -16,6 +16,7 @@ import Select from './Select'
 import './Select.css'
 import ClinicalAssistant from './ClinicalAssistant'
 import { usd } from '../lib/revenue'
+import FieldAIHelp from './FieldAIHelp'
 
 export default function WorkspaceDialogs({
   modal,
@@ -44,6 +45,7 @@ export default function WorkspaceDialogs({
   onProfile,
   onSignOut,
 }) {
+  const sessionPatient = data.patients.find((item) => item.id === draft.patient_id)
   if (!modal) return null
   if (modal.type === 'patient')
     return (
@@ -119,24 +121,6 @@ export default function WorkspaceDialogs({
                 value={draft.symptoms}
                 onChange={(e) => update('symptoms', e.target.value)}
                 placeholder="Reported symptoms, location, onset, and aggravating or easing factors"
-              />
-            </Field>
-            <Field label="Assessment findings" wide>
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.assessment}
-                onChange={(e) => update('assessment', e.target.value)}
-                placeholder="Examination findings, tests performed, and clinical observations"
-              />
-            </Field>
-            <Field label="Pain management plan" wide>
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.pain_management}
-                onChange={(e) => update('pain_management', e.target.value)}
-                placeholder="Agreed strategies, precautions, home advice, and review plan"
               />
             </Field>
             <Field label="Medication" wide>
@@ -258,7 +242,40 @@ export default function WorkspaceDialogs({
                 placeholder="0 = no pain, 10 = worst pain"
               />
             </Field>
-            <Field label="Treatment performed *" wide>
+            <Field
+              label="Assessment findings"
+              wide
+              action={
+                <FieldAIHelp
+                  patient={sessionPatient}
+                  sessions={data.sessions}
+                  draft={draft}
+                  update={update}
+                  mode="assessment"
+                />
+              }
+            >
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.assessment || ''}
+                onChange={(e) => update('assessment', e.target.value)}
+                placeholder="Findings from this visit, tests performed, measurements, and interpretation"
+              />
+            </Field>
+            <Field
+              label="Treatment performed *"
+              wide
+              action={
+                <FieldAIHelp
+                  patient={sessionPatient}
+                  sessions={data.sessions}
+                  draft={draft}
+                  update={update}
+                  mode="treatment"
+                />
+              }
+            >
               <textarea
                 required
                 rows={3}
@@ -266,6 +283,15 @@ export default function WorkspaceDialogs({
                 value={draft.treatment}
                 onChange={(e) => update('treatment', e.target.value)}
                 placeholder="Exercises, manual therapy, techniques, and session details…"
+              />
+            </Field>
+            <Field label="Pain management plan" wide>
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.pain_management || ''}
+                onChange={(e) => update('pain_management', e.target.value)}
+                placeholder="Visit-specific pain-management strategies, advice, precautions, and review"
               />
             </Field>
             <Field label="Progress / response" wide>
@@ -353,7 +379,9 @@ export default function WorkspaceDialogs({
         <div className="session-detail">
           {[
             ['Symptoms', 'symptoms'],
+            ['Assessment findings', 'assessment'],
             ['Treatment performed', 'treatment'],
+            ['Pain management plan', 'pain_management'],
             ['Progress / response', 'progress'],
             ['Next-session plan', 'plan'],
           ].map(([label, field]) => (
