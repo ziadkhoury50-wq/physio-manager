@@ -60,6 +60,35 @@ export default function SessionProgress({ records, patient, openSession, viewSes
           Record session
         </button>
       </div>
+      <section
+        className="panel latest-session-response"
+        aria-label="Latest session progress and response"
+      >
+        <div className="latest-response-heading">
+          <h3>Latest session: progress / response</h3>
+          {ordered[0] && (
+            <span className="soft-badge">
+              {formatDate(ordered[0].session_date, { year: 'numeric' })}
+            </span>
+          )}
+        </div>
+        <p>
+          {ordered[0]
+            ? ordered[0].progress?.trim() ||
+              'No progress / response recorded for the latest session.'
+            : 'Record a session to start tracking the patient’s response.'}
+        </p>
+        {ordered[0] && (
+          <div className="session-assessment-actions">
+            <button className="button secondary" onClick={() => viewSession(ordered[0])}>
+              View latest session
+            </button>
+            <button className="button secondary" onClick={() => openSession(ordered[0])}>
+              Update response
+            </button>
+          </div>
+        )}
+      </section>
       <section className="panel session-pain-chart">
         <h3>
           <Activity size={17} />

@@ -139,6 +139,28 @@
   display: grid;
   gap: 22px;
 }
+.latest-session-response {
+  padding: 22px;
+  border-left: 3px solid #80a28b;
+}
+.latest-response-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.latest-response-heading h3 {
+  font-size: 14px;
+}
+.latest-session-response > p {
+  margin-top: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+  font-size: 13px;
+  color: #526b5b;
+}
 .progress-caption {
   font-size: 12px;
   color: #526b5b;
