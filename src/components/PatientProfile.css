@@ -8,11 +8,11 @@
   gap: 14px;
   padding: 20px;
   margin-bottom: 24px;
-  border: 1px solid #e6d8b4;
-  border-left: 4px solid #af9249;
+  border: 1px solid #d0e2d4;
+  border-left: 4px solid #52846a;
   border-radius: 12px;
-  background: #fff8e6;
-  color: #665432;
+  background: #edf5ee;
+  color: #365b43;
 }
 .patient-next-plan > svg {
   flex-shrink: 0;
@@ -24,7 +24,7 @@
 }
 .patient-next-plan h2 {
   font-size: 15px;
-  color: #4f442a;
+  color: #294f38;
   margin-bottom: 7px;
 }
 .patient-next-plan span {
@@ -40,7 +40,7 @@
 }
 .patient-next-plan .text-link {
   margin-top: 10px;
-  color: #665432;
+  color: #365b43;
 }
 @media (max-width: 600px) {
   .patient-next-plan {
