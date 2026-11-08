@@ -25,10 +25,20 @@ export default function ClinicalAssistant({ patient, sessions, draft, update }) 
       .filter((s) => s.patient_id === patient.id && s.id !== draft.id)
       .sort((a, b) => b.session_date.localeCompare(a.session_date))
       .slice(0, 3)
-    const clinicalFields = ['condition', 'underlying_conditions', 'medication', 'history', 'goals']
+    const clinicalFields = [
+      'age',
+      'condition',
+      'symptoms',
+      'assessment',
+      'pain_management',
+      'underlying_conditions',
+      'medication',
+      'history',
+      'goals',
+    ]
     const todayFields = ['symptoms', 'pain_score', 'treatment', 'progress', 'plan']
     const lines = clinicalFields
-      .filter((key) => patient[key])
+      .filter((key) => patient[key] != null && patient[key] !== '')
       .map((key) => `${key.replaceAll('_', ' ')}: ${patient[key]}`)
     lines.push('\nCurrent session draft:')
     lines.push(

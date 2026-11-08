@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import {
   Activity,
   ArrowLeft,
@@ -16,6 +17,7 @@ import {
 import { formatDate } from '../lib/dates'
 import { Avatar, Empty } from './UI'
 import { usd } from '../lib/revenue'
+import './PatientProfile.css'
 
 export function SessionCard({ session, patient, onClick }) {
   return (
@@ -153,6 +155,8 @@ export function PatientProfile({
   saving,
   viewSession,
 }) {
+  const [profileTab, setProfileTab] = useState('sessions')
+  const tabId = useId()
   if (!patient)
     return (
       <Empty
@@ -188,17 +192,17 @@ export function PatientProfile({
       </div>
       <div className="profile-layout">
         <aside className="panel patient-information">
-          <h3>Patient information</h3>
+          <h2 className="patient-information-title">Patient information</h2>
           <dl>
             <dt>Phone</dt>
             <dd>{patient.phone || 'Not provided'}</dd>
             <dt>Referred by</dt>
             <dd>{patient.referred_by || 'Not recorded'}</dd>
-            <dt>Date of birth</dt>
+            <dt>Age</dt>
             <dd>
-              {patient.date_of_birth
-                ? formatDate(patient.date_of_birth, { year: 'numeric' })
-                : 'Not provided'}
+              {patient.age == null
+                ? 'Not provided'
+                : `${patient.age} ${patient.age === 1 ? 'year' : 'years'}`}
             </dd>
             <dt>Status</dt>
             <dd>
@@ -225,59 +229,164 @@ export function PatientProfile({
           </div>
         </aside>
         <div className="profile-content">
-          <div className="profile-notes">
-            <section className="panel">
-              <span className="note-icon">
-                <Activity size={18} />
-              </span>
-              <h3>Underlying conditions</h3>
-              <p>{patient.underlying_conditions || 'No underlying conditions recorded.'}</p>
-            </section>
-            <section className="panel">
-              <span className="note-icon">
-                <ClipboardList size={18} />
-              </span>
-              <h3>Medication</h3>
-              <p>{patient.medication || 'No medication recorded.'}</p>
-            </section>
-            <section className="panel">
-              <span className="note-icon">
-                <FileText size={18} />
-              </span>
-              <h3>Relevant history</h3>
-              <p>{patient.history || 'No history recorded yet.'}</p>
-            </section>
-            <section className="panel">
-              <span className="note-icon">
-                <Activity size={18} />
-              </span>
-              <h3>Treatment goals</h3>
-              <p>{patient.goals || 'No goals recorded yet.'}</p>
-            </section>
-          </div>
-          <div className="section-heading">
-            <h2>
-              Session history <span>{records.length}</span>
-            </h2>
-            <button className="button primary" onClick={() => openSession(null, patient)}>
-              <Plus size={16} /> Record session
-            </button>
-          </div>
-          <div className="sessions-list">
-            {records.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                patient={patient}
-                onClick={() => viewSession(session)}
-              />
+          <div
+            className="patient-profile-tabs"
+            role="tablist"
+            aria-label="Patient records"
+            onKeyDown={(event) => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+              event.preventDefault()
+              const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]')]
+              const current = tabs.indexOf(document.activeElement)
+              const next =
+                event.key === 'Home'
+                  ? 0
+                  : event.key === 'End'
+                    ? tabs.length - 1
+                    : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+              tabs[next].focus()
+              setProfileTab(tabs[next].dataset.tab)
+            }}
+          >
+            {[
+              ['sessions', 'Session history', ClipboardList],
+              ['assessment', 'Assessment & pain management', Activity],
+            ].map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                id={`${tabId}-${value}-tab`}
+                aria-controls={`${tabId}-${value}-panel`}
+                aria-selected={profileTab === value}
+                tabIndex={profileTab === value ? 0 : -1}
+                data-tab={value}
+                onClick={() => setProfileTab(value)}
+              >
+                <Icon size={16} />
+                <span>{label}</span>
+              </button>
             ))}
           </div>
-          {!records.length && (
-            <Empty title="The first step in their recovery">
-              Record a session to start building this patient’s treatment history.
-            </Empty>
-          )}
+          <section
+            className="patient-profile-panel"
+            id={`${tabId}-assessment-panel`}
+            role="tabpanel"
+            aria-labelledby={`${tabId}-assessment-tab`}
+            hidden={profileTab !== 'assessment'}
+            tabIndex={0}
+          >
+            <div className="section-heading">
+              <h2>Assessment & pain management</h2>
+              <button
+                className="button secondary"
+                disabled={saving}
+                onClick={() => openPatient(patient)}
+              >
+                Edit assessment
+              </button>
+            </div>
+            <div className="profile-notes">
+              {[
+                ['Presenting condition', patient.condition, 'No presenting condition recorded.'],
+                ['Symptoms', patient.symptoms, 'No symptoms recorded yet.'],
+                ['Assessment findings', patient.assessment, 'No assessment findings recorded yet.'],
+                [
+                  'Pain management plan',
+                  patient.pain_management,
+                  'No pain management plan recorded yet.',
+                ],
+              ].map(([label, text, empty]) => (
+                <section className="panel" key={label}>
+                  <span className="note-icon">
+                    <Activity size={18} />
+                  </span>
+                  <h3>{label}</h3>
+                  <p>{text || empty}</p>
+                </section>
+              ))}
+              <section className="panel">
+                <span className="note-icon">
+                  <Activity size={18} />
+                </span>
+                <h3>Underlying conditions</h3>
+                <p>{patient.underlying_conditions || 'No underlying conditions recorded.'}</p>
+              </section>
+              <section className="panel">
+                <span className="note-icon">
+                  <ClipboardList size={18} />
+                </span>
+                <h3>Medication</h3>
+                <p>{patient.medication || 'No medication recorded.'}</p>
+              </section>
+              <section className="panel">
+                <span className="note-icon">
+                  <FileText size={18} />
+                </span>
+                <h3>Relevant history</h3>
+                <p>{patient.history || 'No history recorded yet.'}</p>
+              </section>
+              <section className="panel">
+                <span className="note-icon">
+                  <Activity size={18} />
+                </span>
+                <h3>Treatment goals</h3>
+                <p>{patient.goals || 'No goals recorded yet.'}</p>
+              </section>
+            </div>
+            <section className="panel patient-pain-history">
+              <h3>Recorded session pain scores</h3>
+              <p>Most recent recorded scores. Open a session for its notes and context.</p>
+              {records.filter((item) => item.pain_score != null).length ? (
+                <div className="patient-pain-list">
+                  {records
+                    .filter((item) => item.pain_score != null)
+                    .slice(0, 5)
+                    .map((session) => (
+                      <button type="button" key={session.id} onClick={() => viewSession(session)}>
+                        <span>{formatDate(session.session_date, { year: 'numeric' })}</span>
+                        <strong>{session.pain_score}/10</strong>
+                        <ChevronRight size={15} />
+                      </button>
+                    ))}
+                </div>
+              ) : (
+                <p>No session pain scores recorded yet.</p>
+              )}
+            </section>
+          </section>
+          <section
+            className="patient-profile-panel"
+            id={`${tabId}-sessions-panel`}
+            role="tabpanel"
+            aria-labelledby={`${tabId}-sessions-tab`}
+            hidden={profileTab !== 'sessions'}
+            tabIndex={0}
+          >
+            <div className="section-heading">
+              <h2>
+                Session history <span>{records.length}</span>
+              </h2>
+              <button className="button primary" onClick={() => openSession(null, patient)}>
+                <Plus size={16} /> Record session
+              </button>
+            </div>
+            <div className="sessions-list">
+              {records.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  patient={patient}
+                  onClick={() => viewSession(session)}
+                />
+              ))}
+            </div>
+            {!records.length && (
+              <Empty title="The first step in their recovery">
+                Record a session to start building this patient’s treatment history.
+              </Empty>
+            )}
+          </section>
         </div>
       </div>
     </>

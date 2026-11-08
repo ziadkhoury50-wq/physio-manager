@@ -44,6 +44,38 @@ test('database enforces the single doctor, ownership, private integration storag
         'utf8',
       ),
     )
+    const legacyPatient = '55555555-5555-4555-8555-555555555555'
+    await db.exec(
+      `insert into public.patients(id, owner_id, name, date_of_birth) values ('${legacyPatient}', '${doctor}', 'Legacy patient', '1990-04-12');`,
+    )
+    const patientMigration = await readFile(
+      new URL('../supabase/migrations/202611080001_patient_assessment.sql', import.meta.url),
+      'utf8',
+    )
+    await db.exec(patientMigration)
+    assert.equal(
+      (
+        await db.query(
+          `select age = extract(year from age((now() at time zone 'Asia/Beirut')::date, date_of_birth)) as correct from public.patients where id = '${legacyPatient}'`,
+        )
+      ).rows[0].correct,
+      true,
+    )
+    assert.equal(
+      (
+        await db.query(
+          `select date_of_birth::text as dob from public.patients where id = '${legacyPatient}'`,
+        )
+      ).rows[0].dob,
+      '1990-04-12',
+    )
+    await db.exec(`update public.patients set age = null where id = '${legacyPatient}';`)
+    await db.exec(patientMigration)
+    assert.equal(
+      (await db.query(`select age from public.patients where id = '${legacyPatient}'`)).rows[0].age,
+      null,
+    )
+    await db.exec(`delete from public.patients where id = '${legacyPatient}';`)
     await db.exec(`insert into public.app_access(doctor_user_id) values ('${doctor}');`)
     await assert.rejects(() =>
       db.exec(`insert into public.app_access(doctor_user_id) values ('${other}');`),
@@ -71,6 +103,22 @@ test('database enforces the single doctor, ownership, private integration storag
       `insert into public.sessions(patient_id, session_date, treatment, pain_score) values ('${patient}', '2026-11-01', 'Synthetic treatment', 0);`,
     )
     assert.equal((await db.query('select * from public.sessions')).rows.length, 1)
+    await db.exec(
+      `update public.patients set age = 0, symptoms = 'Recorded symptoms', assessment = 'Recorded findings', pain_management = 'Recorded plan';`,
+    )
+    assert.deepEqual(
+      (await db.query('select age, symptoms, assessment, pain_management from public.patients'))
+        .rows[0],
+      {
+        age: 0,
+        symptoms: 'Recorded symptoms',
+        assessment: 'Recorded findings',
+        pain_management: 'Recorded plan',
+      },
+    )
+    await assert.rejects(() => db.exec('update public.patients set age = -1;'))
+    await assert.rejects(() => db.exec('update public.patients set age = 131;'))
+    await assert.rejects(() => db.exec("update public.patients set symptoms = repeat('x', 10001);"))
     assert.equal(
       (await db.query('select amount_cents from public.sessions')).rows[0].amount_cents,
       null,

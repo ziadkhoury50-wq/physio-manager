@@ -124,7 +124,19 @@ test('Express validates writes, rejects injected ownership, and preserves zero p
     request(app).post(path).set('Authorization', 'Bearer doctor').send(body)
   await post('/api/patients', { name: '   ' }).expect(400)
   await post('/api/patients', { name: 'Synthetic', owner_id: doctorId }).expect(400)
-  await post('/api/patients', { name: 'Synthetic', date_of_birth: '2026-02-30' }).expect(400)
+  for (const age of [-1, 131, 1.5, '34'])
+    await post('/api/patients', { name: 'Synthetic', age }).expect(400)
+  const patient = await post('/api/patients', {
+    name: 'Synthetic',
+    age: 0,
+    symptoms: 'Recorded symptoms',
+    assessment: 'Recorded findings',
+    pain_management: 'Recorded plan',
+  }).expect(201)
+  assert.equal(patient.body.age, 0)
+  assert.equal(patient.body.symptoms, 'Recorded symptoms')
+  assert.equal(patient.body.assessment, 'Recorded findings')
+  assert.equal(patient.body.pain_management, 'Recorded plan')
   await post('/api/patients', { name: 'Synthetic', email: 'invalid' }).expect(400)
   await post('/api/patients', { name: 'Synthetic', referred_by: 'x'.repeat(301) }).expect(400)
   await post('/api/patients', { name: 'Synthetic', medication: 'x'.repeat(10001) }).expect(400)
@@ -153,10 +165,10 @@ test('Express validates writes, rejects injected ownership, and preserves zero p
   assert.equal(response.body.referred_by, 'Dr. Referral')
   assert.equal(response.body.underlying_conditions, 'Recorded condition')
   assert.equal(response.body.medication, 'Recorded medication')
-  assert.equal(calls[0].record.pain_score, 0)
+  assert.equal(calls[1].record.pain_score, 0)
   assert.equal(calls[0].doctor.id, doctorId)
   assert.equal('owner_id' in calls[0].record, false)
-  assert.equal(calls.length, 2)
+  assert.equal(calls.length, 3)
 })
 test('Express supports patient archiving, appointment linking, and validates calendar ranges', async () => {
   const { app, calls } = fixture()

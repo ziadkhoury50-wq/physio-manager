@@ -3,11 +3,11 @@ import { HttpError } from './errors.js'
 import { createCalendarService } from './google-calendar.js'
 
 const patientColumns =
-  'id,owner_id,name,phone,referred_by,date_of_birth,condition,underlying_conditions,medication,history,goals,archived,created_at,updated_at'
+  'id,owner_id,name,phone,referred_by,age,symptoms,assessment,pain_management,condition,underlying_conditions,medication,history,goals,archived,created_at,updated_at'
 const migrationError = () =>
   new HttpError(
     503,
-    'Patient fields need the database update. Run 202611010002_patient_details.sql in Supabase SQL Editor, then retry.',
+    'Patient fields need the database update. Run 202611080001_patient_assessment.sql in Supabase SQL Editor, then retry.',
   )
 
 async function readAll(db, table, column, ascending = true, secondary = 'id') {

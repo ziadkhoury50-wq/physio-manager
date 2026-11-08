@@ -10,7 +10,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react'
-import { CLINIC_ZONE, dateKey, eventDate, eventTime, formatDate } from '../lib/dates'
+import { CLINIC_ZONE, eventDate, eventTime, formatDate } from '../lib/dates'
 import { Dialog, Field } from './UI'
 import Select from './Select'
 import './Select.css'
@@ -66,12 +66,15 @@ export default function WorkspaceDialogs({
                 placeholder="Patient’s full name"
               />
             </Field>
-            <Field label="Date of birth">
+            <Field label="Age" hint="Age in whole years, as recorded.">
               <input
-                type="date"
-                max={dateKey()}
-                value={draft.date_of_birth}
-                onChange={(e) => update('date_of_birth', e.target.value)}
+                type="number"
+                min="0"
+                max="130"
+                step="1"
+                inputMode="numeric"
+                value={draft.age}
+                onChange={(e) => update('age', e.target.value)}
               />
             </Field>
             <Field label="Phone number">
@@ -107,6 +110,33 @@ export default function WorkspaceDialogs({
                 value={draft.underlying_conditions}
                 onChange={(e) => update('underlying_conditions', e.target.value)}
                 placeholder="Other health conditions or relevant diagnoses"
+              />
+            </Field>
+            <Field label="Symptoms" wide>
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.symptoms}
+                onChange={(e) => update('symptoms', e.target.value)}
+                placeholder="Reported symptoms, location, onset, and aggravating or easing factors"
+              />
+            </Field>
+            <Field label="Assessment findings" wide>
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.assessment}
+                onChange={(e) => update('assessment', e.target.value)}
+                placeholder="Examination findings, tests performed, and clinical observations"
+              />
+            </Field>
+            <Field label="Pain management plan" wide>
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.pain_management}
+                onChange={(e) => update('pain_management', e.target.value)}
+                placeholder="Agreed strategies, precautions, home advice, and review plan"
               />
             </Field>
             <Field label="Medication" wide>

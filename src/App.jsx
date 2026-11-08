@@ -42,7 +42,10 @@ const newPatient = {
   name: '',
   phone: '',
   referred_by: '',
-  date_of_birth: '',
+  age: '',
+  symptoms: '',
+  assessment: '',
+  pain_management: '',
   condition: '',
   underlying_conditions: '',
   medication: '',
@@ -286,11 +289,7 @@ export default function App() {
     setFormError('')
   }
   function openPatient(record) {
-    setDraft(
-      record
-        ? { ...newPatient, ...record, date_of_birth: record.date_of_birth || '' }
-        : { ...newPatient },
-    )
+    setDraft(record ? { ...newPatient, ...record, age: record.age ?? '' } : { ...newPatient })
     setModal({ type: 'patient', editing: Boolean(record) })
     setDirty(false)
     setFormError('')
@@ -346,8 +345,17 @@ export default function App() {
         typeof draft[field] === 'string' ? draft[field].trim() : (draft[field] ?? null),
       ]),
     )
-    if (isPatient) record.date_of_birth = record.date_of_birth || null
-    else record.pain_score = record.pain_score === '' ? null : Number(record.pain_score)
+    if (isPatient) {
+      record.age = record.age === '' ? null : Number(record.age)
+      if (
+        record.age != null &&
+        (!Number.isInteger(record.age) || record.age < 0 || record.age > 130)
+      ) {
+        setFormError('Enter age as a whole number between 0 and 130.')
+        setSaving(false)
+        return
+      }
+    } else record.pain_score = record.pain_score === '' ? null : Number(record.pain_score)
     if (!isPatient) {
       try {
         const cents = parseUsd(draft.amount)
@@ -698,6 +706,7 @@ export default function App() {
             ))}
           {activeTab === '/patients' && patientId && (
             <PatientProfile
+              key={patientId}
               patient={data.patients.find((item) => item.id === patientId)}
               sessions={data.sessions}
               openPatient={openPatient}

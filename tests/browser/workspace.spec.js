@@ -6,6 +6,59 @@ test.beforeEach(async ({ page }) => {
   await mockWorkspace(page)
 })
 
+test('patient age symptoms and assessment tabs persist and support keyboard navigation', async ({
+  page,
+}) => {
+  await page.goto('/#/patients')
+  await page.getByRole('button', { name: 'New patient', exact: true }).click()
+  await expect(page.getByLabel('Date of birth', { exact: true })).toHaveCount(0)
+  await page.getByLabel('Full name *', { exact: true }).fill('Assessment Test Patient')
+  await page.getByLabel('Age', { exact: true }).fill('34')
+  await page.getByLabel('Symptoms', { exact: true }).fill('Discomfort on reaching overhead.')
+  await page
+    .getByLabel('Assessment findings', { exact: true })
+    .fill('Active movement findings recorded by clinician.')
+  await page
+    .getByLabel('Pain management plan', { exact: true })
+    .fill('Agreed activity modification and review.')
+  await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await expect(page.getByText('34 years', { exact: true })).toBeVisible()
+  const historyTab = page.getByRole('tab', { name: 'Session history', exact: true })
+  const assessmentTab = page.getByRole('tab', { name: 'Assessment & pain management', exact: true })
+  await expect(historyTab).toHaveAttribute('aria-selected', 'true')
+  await historyTab.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(assessmentTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByText('Discomfort on reaching overhead.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('Active movement findings recorded by clinician.', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Agreed activity modification and review.', { exact: true }),
+  ).toBeVisible()
+  await noOverflow(page)
+  await page.getByRole('button', { name: 'Edit assessment', exact: true }).click()
+  await expect(page.getByLabel('Age', { exact: true })).toHaveValue('34')
+  await page.getByLabel('Age', { exact: true }).fill('0')
+  await page.getByLabel('Symptoms', { exact: true }).fill('Updated symptoms recorded.')
+  await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await page.reload()
+  await expect(page.getByText('0 years', { exact: true })).toBeVisible()
+  await assessmentTab.click()
+  await expect(page.getByText('Updated symptoms recorded.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('Agreed activity modification and review.', { exact: true }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Edit assessment', exact: true }).click()
+  await page.getByLabel('Age', { exact: true }).fill('')
+  await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await expect(page.locator('.patient-information')).toContainText('Not provided')
+  await historyTab.click()
+  await expect(assessmentTab).toHaveAttribute('aria-selected', 'false')
+  await expect(page.getByText('Updated symptoms recorded.', { exact: true })).not.toBeVisible()
+  await noOverflow(page)
+})
+
 test('dashboard day, week and custom filters apply valid inclusive ranges on mobile and desktop', async ({
   page,
 }) => {
@@ -283,6 +336,7 @@ test('create, edit, archive, and restore a patient without losing history', asyn
     .fill('Returning after an ankle injury.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Maya Test', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
   await expect(page.getByText('Returning after an ankle injury.', { exact: true })).toBeVisible()
   await expect(page.getByText('Dr. Referral', { exact: true })).toBeVisible()
   await expect(page.getByText('Recorded underlying condition', { exact: true })).toBeVisible()
@@ -298,6 +352,7 @@ test('create, edit, archive, and restore a patient without losing history', asyn
   await page.getByRole('link', { name: 'All patients', exact: true }).click()
   await page.getByRole('button', { name: 'Archived', exact: true }).click()
   await page.getByRole('link', { name: /Maya Test/ }).click()
+  await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
   await expect(page.getByText('Walk comfortably.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Restore patient', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Archive patient', exact: true })).toBeVisible()

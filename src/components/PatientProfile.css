@@ -1,0 +1,104 @@
+.patient-information-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.patient-profile-tabs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid #dfe8df;
+  background: #edf3ed;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+.patient-profile-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  min-height: 48px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: #4f6857;
+  text-align: center;
+  line-height: 1.6;
+}
+.patient-profile-tabs svg {
+  flex-shrink: 0;
+}
+.patient-profile-tabs [aria-selected='true'] {
+  background: white;
+  color: #28523c;
+  border-color: #d5e1d4;
+  box-shadow: 0 2px 5px #193b2110;
+  font-weight: 600;
+}
+.patient-profile-tabs button:focus-visible {
+  outline: 2px solid #315f49;
+  outline-offset: 2px;
+}
+.patient-profile-panel[hidden] {
+  display: none;
+}
+.patient-profile-panel {
+  min-width: 0;
+}
+.patient-profile-panel .section-heading {
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.patient-pain-history {
+  padding: 23px;
+}
+.patient-pain-history h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.patient-pain-history p {
+  color: #526b5b;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.patient-pain-list {
+  display: grid;
+  margin-top: 16px;
+}
+.patient-pain-list button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 0;
+  border-top: 1px solid #e2e9df;
+  background: transparent;
+  color: #365740;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+}
+.patient-pain-list button span {
+  flex: 1;
+}
+.patient-pain-list button strong {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 600px) {
+  .patient-profile-tabs {
+    gap: 4px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  }
+  .patient-profile-tabs button {
+    font-size: 11px;
+    padding: 10px 8px;
+    gap: 6px;
+    min-height: 56px;
+  }
+  .patient-pain-history {
+    padding: 18px;
+  }
+}

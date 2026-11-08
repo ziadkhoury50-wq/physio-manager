@@ -85,6 +85,12 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ## Express API
 
+### Patient age and clinical tabs
+
+Run `supabase/migrations/202611080001_patient_assessment.sql` before deploying these patient fields. The migration adds age (optional whole years, 0–130), patient symptoms, assessment findings and a pain-management plan. Historical birth dates are retained in the database and converted to age once when the column is first created, using the clinic date. The app then stores age as recorded; it is not automatically incremented. Re-running the migration preserves an intentionally cleared age.
+
+Patient profiles have keyboard-accessible Session history and Assessment & pain management tabs. The latter displays the patient clinical fields and up to five recent recorded session pain scores, including zero. Edit assessment opens the patient form. The optional Gemini preview includes these clinical fields for doctor review, with names, contact details and historical birth dates excluded.
+
 ### Session amounts and Dashboard
 
 Dashboard filters include Today, Yesterday, This week, Last week, Last 7 days, This month, Last month, This year, All time, and Custom dates. Weeks start on Monday. Custom ranges include both endpoints and require Apply dates; invalid or pending edits do not change the applied totals. The active range is displayed explicitly. Chart grouping adjusts to the range length (day, week, month or year), while all totals and recent-session rows use the identical date filter.
