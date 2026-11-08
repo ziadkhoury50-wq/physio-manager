@@ -457,7 +457,9 @@ test('record, review, and edit a session including zero pain score', async ({ pa
   await page.getByRole('button', { name: 'Save session', exact: true }).click()
   await page.getByRole('button').filter({ hasText: 'Guided movement and strengthening.' }).click()
   await expect(page.getByText('Pain score: 0/10', { exact: true })).toBeVisible()
-  await expect(page.getByText('Review mobility next week.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('dialog').getByText('Review mobility next week.', { exact: true }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Edit session', exact: true }).click()
   await page.getByLabel('Progress / response', { exact: true }).fill('Comfortable throughout.')
   await page.getByRole('button', { name: 'Save session', exact: true }).click()

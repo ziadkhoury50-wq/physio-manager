@@ -13,12 +13,14 @@ import {
   Trash2,
   Archive,
   ArchiveRestore,
+  Pin,
 } from 'lucide-react'
 import { formatDate } from '../lib/dates'
 import { Avatar, Empty } from './UI'
 import { usd } from '../lib/revenue'
 import './PatientProfile.css'
 import SessionProgress, { ProgressMetrics } from './SessionProgress'
+import { patientProgress } from '../lib/patient-progress'
 
 export function SessionCard({ session, patient, onClick }) {
   return (
@@ -157,6 +159,7 @@ export function PatientProfile({
   viewSession,
 }) {
   const [profileTab, setProfileTab] = useState('sessions')
+  const [showFullNextPlan, setShowFullNextPlan] = useState(false)
   const tabId = useId()
   if (!patient)
     return (
@@ -175,6 +178,7 @@ export function PatientProfile({
   const records = sessions
     .filter((item) => item.patient_id === patient.id)
     .sort((a, b) => b.session_date.localeCompare(a.session_date))
+  const latestSession = patientProgress(records).chronological.at(-1)
   return (
     <>
       <a className="back-link" href="#/patients">
@@ -191,6 +195,41 @@ export function PatientProfile({
           Edit patient
         </button>
       </div>
+      {latestSession && (
+        <section className="patient-next-plan" aria-label="Next session reminder">
+          <Pin size={21} />
+          <div>
+            <h2>Next session — remember</h2>
+            <span>
+              From the session on {formatDate(latestSession.session_date, { year: 'numeric' })}
+            </span>
+            <p>
+              {latestSession.plan?.trim()
+                ? !showFullNextPlan && latestSession.plan.trim().length > 400
+                  ? `${latestSession.plan.trim().slice(0, 400)}…`
+                  : latestSession.plan.trim()
+                : 'No next-session plan was recorded for the latest visit.'}
+            </p>
+            {latestSession.plan?.trim().length > 400 && (
+              <button
+                type="button"
+                className="text-link"
+                aria-expanded={showFullNextPlan}
+                onClick={() => setShowFullNextPlan(!showFullNextPlan)}
+              >
+                {showFullNextPlan ? 'Show less' : 'Read full plan'}
+              </button>
+            )}
+          </div>
+          <button
+            className="button secondary"
+            disabled={saving}
+            onClick={() => openSession(latestSession)}
+          >
+            Update plan
+          </button>
+        </section>
+      )}
       <div className="profile-layout">
         <aside className="panel patient-information">
           <h2 className="patient-information-title">Patient information</h2>
