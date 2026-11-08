@@ -199,7 +199,7 @@ export function PatientProfile({
         <section className="patient-next-plan" aria-label="Next session reminder">
           <Pin size={21} />
           <div>
-            <h2>Next session — remember</h2>
+            <h2>Next session reminder</h2>
             <span>
               From the session on {formatDate(latestSession.session_date, { year: 'numeric' })}
             </span>
