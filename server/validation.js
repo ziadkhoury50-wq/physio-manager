@@ -35,6 +35,7 @@ export const sessionSchema = z
     symptoms: text.optional(),
     pain_score: z.number().int().min(0).max(10).nullable().optional(),
     amount_cents: z.number().int().min(0).max(100000000).nullable().optional(),
+    payment_received: z.boolean().nullable().optional(),
     treatment: text.min(1),
     progress: text.optional(),
     plan: text.optional(),

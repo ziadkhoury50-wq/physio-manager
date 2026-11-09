@@ -87,6 +87,8 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ### Automatic calendar patient matching
 
+The calendar has Match this week, and an unlinked appointment has Match this appointment. The latter explicitly restarts matching for a previously blocked appointment, while preserving manual patient links. The edit-distance heuristic uses restricted Damerau–Levenshtein: one adjacent letter swap, substitution, missing letter or extra letter in one name token can match when the other name token is exact and there is a unique strong candidate. Very short names only tolerate adjacent swaps; distant names and competing near matches remain for review.
+
 Apply `supabase/migrations/202611090001_calendar_matching.sql`. On calendar fetch, Express compares appointment titles with active patient names using case/accent normalization, Arabic diacritic/alef normalization, reversed name order, first/last name matching, and a single small spelling difference in longer names. Strong unique matches are stored and labelled automatic. Partial names, competing candidates, unknown title words, family references and archived candidates require review. This is deterministic name similarity, not proof of identity; similarity scores are not clinical probabilities. No names are sent to Gemini and no Google events are modified.
 
 Manual links are never replaced by automatic insertion. Selecting No patient linked creates a doctor-only blocked record so refresh cannot undo that choice. Changed or newly ambiguous automatic matches are kept unlinked for review rather than reassigned. Suggestions can be selected manually. Existing links migrate as manual. A matching outage leaves the calendar readable, removes automatic associations from the current view, and shows a warning.
@@ -102,6 +104,8 @@ Run `supabase/migrations/202611080001_patient_assessment.sql` before deploying t
 Patient profiles have keyboard-accessible Session history and Assessment & pain management tabs. The latter displays per-session progress and visit notes; Patient background contains the retained patient-level clinical information. Each visit can be edited independently. The optional Gemini preview includes these clinical fields for doctor review, with names, contact details and historical birth dates excluded.
 
 ### Session amounts and Dashboard
+
+Run `supabase/migrations/202611090002_session_payments.sql` for Received / Not received status. Historical sessions remain Not marked until reviewed. New priced sessions default to Not received, and sessions without an amount or with zero due have no payment flag. Doctor-only Mark received actions update the session, dashboard totals and patient reminders. Unknown-status amounts are included under Not marked received and explicitly labelled unconfirmed; they are not assumed to be unpaid. Dashboard payment totals follow the selected session dates, not the date cash was received. Partial payments are not recorded by this flag.
 
 Dashboard filters include Today, Yesterday, This week, Last week, Last 7 days, This month, Last month, This year, All time, and Custom dates. Weeks start on Monday. Custom ranges include both endpoints and require Apply dates; invalid or pending edits do not change the applied totals. The active range is displayed explicitly. Chart grouping adjusts to the range length (day, week, month or year), while all totals and recent-session rows use the identical date filter.
 

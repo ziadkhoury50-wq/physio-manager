@@ -13,6 +13,29 @@ export function parseUsd(value) {
 export const usd = (cents) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 
+export function paymentSummary(sessions) {
+  const priced = sessions.filter((s) => Number.isInteger(s.amount_cents) && s.amount_cents > 0)
+  const pending = priced.filter((s) => s.payment_received !== true)
+  return {
+    received: priced
+      .filter((s) => s.payment_received === true)
+      .reduce((n, s) => n + s.amount_cents, 0),
+    pendingTotal: pending.reduce((n, s) => n + s.amount_cents, 0),
+    pending,
+    unconfirmed: pending.filter((s) => s.payment_received == null).length,
+  }
+}
+export const paymentLabel = (session) =>
+  session.amount_cents == null
+    ? 'No amount recorded'
+    : session.amount_cents === 0
+      ? 'No payment due'
+      : session.payment_received === true
+        ? 'Received'
+        : session.payment_received === false
+          ? 'Not received'
+          : 'Not marked'
+
 const validDate = (value) =>
   /^\d{4}-\d{2}-\d{2}$/.test(value || '') &&
   !Number.isNaN(Date.parse(`${value}T12:00:00Z`)) &&
@@ -100,6 +123,7 @@ export function revenueSummary(sessions, period, today, custom) {
   }
   return {
     rows,
+    payments: paymentSummary(rows),
     total,
     priced: priced.length,
     missing: rows.length - priced.length,

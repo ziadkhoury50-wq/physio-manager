@@ -1,6 +1,27 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dashboardRange, parseUsd, revenueSummary, usd } from '../src/lib/revenue.js'
+import {
+  dashboardRange,
+  parseUsd,
+  paymentSummary,
+  revenueSummary,
+  usd,
+} from '../src/lib/revenue.js'
+
+test('received totals distinguish unpaid, unconfirmed, zero and missing amounts', () => {
+  const rows = [
+    { amount_cents: 1000, payment_received: true },
+    { amount_cents: 2500, payment_received: false },
+    { amount_cents: 3000, payment_received: null },
+    { amount_cents: 0, payment_received: false },
+    { amount_cents: null, payment_received: null },
+  ]
+  const result = paymentSummary(rows)
+  assert.equal(result.received, 1000)
+  assert.equal(result.pendingTotal, 5500)
+  assert.equal(result.pending.length, 2)
+  assert.equal(result.unconfirmed, 1)
+})
 
 test('dashboard presets handle days, Monday weeks, leap months and year boundaries', () => {
   assert.deepEqual(dashboardRange('day', '2026-11-03'), { start: '2026-11-03', end: '2026-11-03' })

@@ -86,6 +86,18 @@ export default function Calendar({
             </button>
           ))}
         </div>
+        <div className="calendar-matching-actions">
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy || !connection}
+            onClick={refresh}
+          >
+            <Link2 size={15} />
+            {busy ? 'Matching…' : 'Match this week'}
+          </button>
+          <span>Clear name matches link automatically. Uncertain matches stay for review.</span>
+        </div>
         <div className="agenda-title">
           <h3>
             {day === today ? 'Today’s schedule' : formatDate(day, { weekday: 'long' })}

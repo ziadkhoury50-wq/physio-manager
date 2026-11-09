@@ -56,6 +56,19 @@ export function createServices(config) {
       return { id: user.id, db }
     },
     records: {
+      async rematch({ db }, { calendar_id, event_id }) {
+        const { error } = await db
+          .from('appointment_links')
+          .delete()
+          .eq('calendar_id', calendar_id)
+          .eq('event_id', event_id)
+          .eq('source', 'blocked')
+        if (error)
+          throw new HttpError(
+            503,
+            'Could not restart matching for this appointment. Please try again.',
+          )
+      },
       async autoLink({ db, id: owner }, calendarId, events) {
         const [patients, existing] = await Promise.all([
           readAll(db, 'patients', 'name'),
@@ -109,12 +122,10 @@ export function createServices(config) {
             })
         }
         if (inserts.length) {
-          const { error } = await db
-            .from('appointment_links')
-            .upsert(inserts, {
-              onConflict: 'owner_id,calendar_id,event_id',
-              ignoreDuplicates: true,
-            })
+          const { error } = await db.from('appointment_links').upsert(inserts, {
+            onConflict: 'owner_id,calendar_id,event_id',
+            ignoreDuplicates: true,
+          })
           if (error)
             throw new HttpError(
               503,
@@ -167,7 +178,7 @@ export function createServices(config) {
             if (table === 'sessions')
               throw new HttpError(
                 503,
-                'Session fields need the database updates. Run 202611030002_session_amounts.sql and 202611080002_session_assessments.sql in Supabase SQL Editor, then retry.',
+                'Session fields need the database updates. Run the session migrations, including 202611090002_session_payments.sql, in Supabase SQL Editor, then retry.',
               )
             throw migrationError()
           }
@@ -204,20 +215,18 @@ export function createServices(config) {
         return data
       },
       async unlink({ db, id: owner }, { calendar_id, event_id }) {
-        const { error } = await db
-          .from('appointment_links')
-          .upsert(
-            {
-              owner_id: owner,
-              calendar_id,
-              event_id,
-              patient_id: null,
-              source: 'blocked',
-              matched_event_name: '',
-              matched_patient_name: '',
-            },
-            { onConflict: 'owner_id,calendar_id,event_id' },
-          )
+        const { error } = await db.from('appointment_links').upsert(
+          {
+            owner_id: owner,
+            calendar_id,
+            event_id,
+            patient_id: null,
+            source: 'blocked',
+            matched_event_name: '',
+            matched_patient_name: '',
+          },
+          { onConflict: 'owner_id,calendar_id,event_id' },
+        )
         if (error) throw new HttpError(503, 'Could not remove this patient link. Please try again.')
       },
     },

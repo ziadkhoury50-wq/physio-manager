@@ -139,6 +139,10 @@ export function createApp({
   app.put('/api/appointment-links', async (req, res) =>
     res.json(await services.records.link(req.doctor, linkSchema.parse(req.body))),
   )
+  app.post('/api/appointment-links/rematch', async (req, res) => {
+    await services.records.rematch(req.doctor, linkKeySchema.parse(req.body))
+    res.status(204).end()
+  })
   app.delete('/api/appointment-links', async (req, res) => {
     await services.records.unlink(req.doctor, linkKeySchema.parse(req.body))
     res.status(204).end()

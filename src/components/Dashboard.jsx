@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Wallet, ClipboardList, Users, ChartColumn, ArrowUpRight } from 'lucide-react'
-import { dashboardRange, revenueSummary, usd } from '../lib/revenue'
+import { dashboardRange, paymentLabel, revenueSummary, usd } from '../lib/revenue'
 import { formatDate } from '../lib/dates'
 import Select from './Select'
 import './Dashboard.css'
@@ -150,6 +150,24 @@ export default function Dashboard({ sessions, patients, today, viewSession, load
           </p>
         </div>
       </div>
+      <section className="dashboard-payments" aria-label="Payment overview">
+        <p className="payment-period-note">
+          Payment status for sessions in the selected date range.
+        </p>
+        <div>
+          <span>Received</span>
+          <strong>{usd(summary.payments.received)}</strong>
+          <small>Payments explicitly marked received</small>
+        </div>
+        <div>
+          <span>Not marked received</span>
+          <strong>{usd(summary.payments.pendingTotal)}</strong>
+          <small>
+            {summary.payments.pending.length} sessions need follow-up
+            {summary.payments.unconfirmed ? `; ${summary.payments.unconfirmed} unconfirmed` : ''}
+          </small>
+        </div>
+      </section>
       <div className="dashboard-metrics">
         {metrics.map(({ label, value, detail, icon }) => (
           <section className="dashboard-metric" key={label}>
@@ -224,6 +242,7 @@ export default function Dashboard({ sessions, patients, today, viewSession, load
                 </span>
                 <span className={s.amount_cents == null ? 'amount-missing' : 'session-amount'}>
                   {s.amount_cents == null ? 'Not recorded' : usd(s.amount_cents)}
+                  <small>{paymentLabel(s)}</small>
                 </span>
                 <ArrowUpRight size={15} />
               </button>

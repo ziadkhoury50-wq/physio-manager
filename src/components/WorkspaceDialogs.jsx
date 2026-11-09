@@ -9,13 +9,14 @@ import {
   MapPin,
   Plus,
   Trash2,
+  Users,
 } from 'lucide-react'
 import { CLINIC_ZONE, eventDate, eventTime, formatDate } from '../lib/dates'
 import { Dialog, Field } from './UI'
 import Select from './Select'
 import './Select.css'
 import ClinicalAssistant from './ClinicalAssistant'
-import { usd } from '../lib/revenue'
+import { paymentLabel, usd } from '../lib/revenue'
 import FieldAIHelp from './FieldAIHelp'
 import './PatientMatching.css'
 
@@ -31,6 +32,8 @@ export default function WorkspaceDialogs({
   openSession,
   deleteSession,
   linkPatient,
+  rematchPatient,
+  markPaymentReceived,
   calendarId,
   timeZone,
   setTimeZone,
@@ -219,9 +222,23 @@ export default function WorkspaceDialogs({
                 inputMode="decimal"
                 maxLength={12}
                 value={draft.amount ?? ''}
-                onChange={(e) => update('amount', e.target.value)}
+                onChange={(e) => {
+                  update('amount', e.target.value)
+                  if (draft.payment_received === 'received') update('payment_received', '')
+                }}
                 placeholder="e.g. 50.00"
               />
+            </Field>
+            <Field label="Payment status">
+              <Select
+                value={Number(draft.amount) > 0 ? draft.payment_received || '' : ''}
+                disabled={!(Number(draft.amount) > 0)}
+                onChange={(e) => update('payment_received', e.target.value)}
+              >
+                <option value="">Not marked</option>
+                <option value="not_received">Not received</option>
+                <option value="received">Received</option>
+              </Select>
             </Field>
             <Field label="Symptoms / how the patient feels" wide>
               <textarea
@@ -360,6 +377,17 @@ export default function WorkspaceDialogs({
         wide
       >
         <div className="detail-badges">
+          <span className="soft-badge">Payment: {paymentLabel(draft)}</span>
+          {draft.amount_cents > 0 && draft.payment_received !== true && (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={saving}
+              onClick={() => markPaymentReceived(draft)}
+            >
+              Mark received
+            </button>
+          )}
           <span className="soft-badge">
             Session amount: {draft.amount_cents == null ? 'Not recorded' : usd(draft.amount_cents)}
           </span>
@@ -502,6 +530,17 @@ export default function WorkspaceDialogs({
           <p className="field-hint">
             This link stays in your practice. Your Google event is unchanged.
           </p>
+          {!person && (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={saving || calendarBusy}
+              onClick={() => rematchPatient(event.id)}
+            >
+              <Users size={15} />
+              Match this appointment
+            </button>
+          )}
           {formError && (
             <p className="form-error" role="alert">
               {formError}

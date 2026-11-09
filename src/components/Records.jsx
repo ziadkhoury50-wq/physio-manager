@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { formatDate } from '../lib/dates'
 import { Avatar, Empty } from './UI'
-import { usd } from '../lib/revenue'
+import { paymentLabel, paymentSummary, usd } from '../lib/revenue'
 import './PatientProfile.css'
 import SessionProgress, { ProgressMetrics } from './SessionProgress'
 import { patientProgress } from '../lib/patient-progress'
@@ -39,6 +39,8 @@ export function SessionCard({ session, patient, onClick }) {
             <>
               <span className="meta-divider">·</span>
               {usd(session.amount_cents)}
+              <span className="meta-divider">·</span>
+              {paymentLabel(session)}
             </>
           )}
           {session.pain_score != null && (
@@ -157,6 +159,7 @@ export function PatientProfile({
   deletePatient,
   saving,
   viewSession,
+  markPaymentReceived,
 }) {
   const [profileTab, setProfileTab] = useState('sessions')
   const [showFullNextPlan, setShowFullNextPlan] = useState(false)
@@ -179,6 +182,7 @@ export function PatientProfile({
     .filter((item) => item.patient_id === patient.id)
     .sort((a, b) => b.session_date.localeCompare(a.session_date))
   const latestSession = patientProgress(records).chronological.at(-1)
+  const payments = paymentSummary(records)
   return (
     <>
       <a className="back-link" href="#/patients">
@@ -195,6 +199,39 @@ export function PatientProfile({
           Edit patient
         </button>
       </div>
+      {payments.pendingTotal > 0 && (
+        <section className="patient-payment-reminder" aria-label="Payments not marked received">
+          <h2>Not marked received: {usd(payments.pendingTotal)}</h2>
+          <p>
+            {payments.pending.length} session{payments.pending.length === 1 ? '' : 's'} need payment
+            follow-up.
+            {payments.unconfirmed
+              ? ` ${payments.unconfirmed} have no payment status recorded yet.`
+              : ''}
+          </p>
+          <details>
+            <summary>Review session payments</summary>
+            {payments.pending.map((s) => (
+              <div className="pending-payment-row" key={s.id}>
+                <span>
+                  {formatDate(s.session_date, { year: 'numeric' })}
+                  <small>
+                    {usd(s.amount_cents)} · {paymentLabel(s)}
+                  </small>
+                </span>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={saving}
+                  onClick={() => markPaymentReceived(s)}
+                >
+                  Mark received
+                </button>
+              </div>
+            ))}
+          </details>
+        </section>
+      )}
       {latestSession && (
         <section className="patient-next-plan" aria-label="Next session reminder">
           <Pin size={21} />

@@ -23,6 +23,7 @@ import WorkspaceDialogs from './components/WorkspaceDialogs'
 import Dashboard from './components/Dashboard'
 import { parseUsd } from './lib/revenue'
 import './App.css'
+import './components/Payments.css'
 
 const subscribe = (listener) => {
   window.addEventListener('hashchange', listener)
@@ -61,6 +62,7 @@ const newSession = {
   progress: '',
   plan: '',
   amount: '',
+  payment_received: 'not_received',
 }
 
 export default function App() {
@@ -258,6 +260,14 @@ export default function App() {
       .then((result) => {
         if (active) {
           setEvents(result.items)
+          setModal((current) =>
+            current?.type === 'event'
+              ? {
+                  ...current,
+                  event: result.items.find((item) => item.id === current.event.id) || current.event,
+                }
+              : current,
+          )
           if (result.links && linkVersion === linkGeneration.current)
             setData((current) => ({
               ...current,
@@ -320,6 +330,12 @@ export default function App() {
             ...record,
             pain_score: record.pain_score ?? '',
             amount: record.amount_cents == null ? '' : (record.amount_cents / 100).toFixed(2),
+            payment_received:
+              record.payment_received == null
+                ? ''
+                : record.payment_received
+                  ? 'received'
+                  : 'not_received',
           }
         : {
             ...newSession,
@@ -378,6 +394,14 @@ export default function App() {
     if (!isPatient) {
       try {
         const cents = parseUsd(draft.amount)
+        record.payment_received =
+          cents > 0
+            ? draft.payment_received === 'received'
+              ? true
+              : draft.payment_received === 'not_received'
+                ? false
+                : null
+            : null
         if (cents != null || Object.hasOwn(draft, 'amount_cents')) record.amount_cents = cents
       } catch (error) {
         setFormError(error.message)
@@ -508,6 +532,54 @@ export default function App() {
       )
     } catch (error) {
       setFormError(error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function rematchPatient(eventId) {
+    setSaving(true)
+    setFormError('')
+    linkGeneration.current++
+    try {
+      await api('/appointment-links/rematch', {
+        method: 'POST',
+        body: { calendar_id: calendarId, event_id: eventId },
+      })
+      linkGeneration.current++
+      setData((current) => ({
+        ...current,
+        links: current.links.filter(
+          (link) =>
+            !(
+              link.calendar_id === calendarId &&
+              link.event_id === eventId &&
+              link.source === 'blocked'
+            ),
+        ),
+      }))
+      setRefresh((value) => value + 1)
+      setNotice('Checking this appointment against patient names…')
+    } catch (error) {
+      setFormError(error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function markPaymentReceived(session) {
+    setSaving(true)
+    try {
+      const saved = await api(`/sessions/${session.id}`, {
+        method: 'PATCH',
+        body: { payment_received: true },
+      })
+      setData((current) => ({
+        ...current,
+        sessions: current.sessions.map((s) => (s.id === saved.id ? saved : s)),
+      }))
+      setDraft((current) => (current.id === saved.id ? { ...current, ...saved } : current))
+      setNotice('Payment marked received.')
+    } catch (error) {
+      setNotice(error.message)
     } finally {
       setSaving(false)
     }
@@ -743,6 +815,7 @@ export default function App() {
               openSession={openSession}
               archivePatient={archivePatient}
               deletePatient={(person) => deleteRecord('patients', person)}
+              markPaymentReceived={markPaymentReceived}
               saving={saving}
               viewSession={viewSession}
             />
@@ -787,6 +860,8 @@ export default function App() {
         </div>
       )}
       <WorkspaceDialogs
+        markPaymentReceived={markPaymentReceived}
+        rematchPatient={rematchPatient}
         deleteSession={(session) => deleteRecord('sessions', session)}
         {...{
           modal,

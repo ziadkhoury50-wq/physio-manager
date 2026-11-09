@@ -16,6 +16,9 @@ function fixture() {
       return { id: doctorId }
     },
     records: {
+      async rematch(doctor, record) {
+        calls.push({ doctor, record })
+      },
       async remove(doctor, table, id) {
         calls.push({ doctor, table, id })
       },
@@ -110,6 +113,7 @@ test('Express protects record and calendar endpoints from missing, invalid, and 
     ['post', '/api/calendar/connect'],
     ['post', '/api/clinical-assistant'],
     ['put', '/api/appointment-links'],
+    ['post', '/api/appointment-links/rematch'],
     ['delete', '/api/calendar/connection'],
   ]) {
     await request(app)[method](path).expect(401)

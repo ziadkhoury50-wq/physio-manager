@@ -30,3 +30,17 @@
   color: #526b5b;
   margin-top: 4px;
 }
+.calendar-matching-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+.calendar-matching-actions span {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #526b5b;
+  flex: 1;
+  min-width: 160px;
+}

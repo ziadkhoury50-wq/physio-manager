@@ -7,6 +7,51 @@ test.beforeEach(async ({ page }) => {
   await mockWorkspace(page)
 })
 
+test('received flags update patient reminders and filtered dashboard payment totals', async ({
+  page,
+}) => {
+  await page.goto('/#/sessions')
+  await page
+    .locator('.page-heading')
+    .getByRole('button', { name: 'Record session', exact: true })
+    .click()
+  await chooseOption(page, 'Patient *', 'Nadia Farah')
+  await page.getByLabel('Session amount (USD)', { exact: true }).fill('45.25')
+  await expect(page.getByRole('combobox', { name: 'Payment status', exact: true })).toContainText(
+    'Not received',
+  )
+  await page.getByLabel('Treatment performed *', { exact: true }).fill('Payment tracking session')
+  await page.getByRole('button', { name: 'Save session', exact: true }).click()
+  await tab(page, 'Dashboard')
+  await expect(page.locator('.dashboard-payments')).toContainText('$45.25')
+  await tab(page, 'Patients')
+  await page.locator('.patient-card').filter({ hasText: 'Nadia Farah' }).click()
+  await expect(page.locator('.patient-payment-reminder')).toContainText('$45.25')
+  await page.getByText('Review session payments', { exact: true }).click()
+  await page
+    .locator('.patient-payment-reminder')
+    .getByRole('button', { name: 'Mark received', exact: true })
+    .click()
+  await expect(page.locator('.patient-payment-reminder')).toHaveCount(0)
+  await tab(page, 'Dashboard')
+  await expect(page.locator('.dashboard-payments > div').first()).toContainText('$45.25')
+  await expect(page.locator('.dashboard-payments > div').nth(1)).toContainText('$0.00')
+  await page.locator('.dashboard-session-row').filter({ hasText: 'Nadia Farah' }).first().click()
+  await expect(page.getByRole('dialog')).toContainText('Payment: Received')
+  await page.getByRole('button', { name: 'Edit session', exact: true }).click()
+  await page.getByLabel('Session amount (USD)', { exact: true }).fill('50.00')
+  await expect(page.getByRole('combobox', { name: 'Payment status', exact: true })).toContainText(
+    'Not marked',
+  )
+  await page.getByLabel('Session amount (USD)', { exact: true }).fill('45.25')
+  await chooseOption(page, 'Payment status', 'Not received')
+  await page.getByRole('button', { name: 'Save session', exact: true }).click()
+  await expect(page.locator('.dashboard-payments > div').nth(1)).toContainText('$45.25')
+  await page.reload()
+  await expect(page.locator('.dashboard-payments > div').nth(1)).toContainText('$45.25')
+  await noOverflow(page)
+})
+
 test('automatic patient matches navigate to the patient and manual unlink survives calendar refresh', async ({
   page,
 }) => {
@@ -42,8 +87,21 @@ test('automatic patient matches navigate to the patient and manual unlink surviv
         : { contentType: 'application/json', body: JSON.stringify(link) },
     )
   })
+  await page.route('**/api/appointment-links/rematch', async (route) => {
+    const body = route.request().postDataJSON()
+    links = links.filter((row) => row.event_id !== body.event_id)
+    links.push({
+      calendar_id: 'demo',
+      event_id: body.event_id,
+      patient_id: 'demo-1',
+      source: 'automatic',
+    })
+    return route.fulfill({ status: 204 })
+  })
   await page.goto('/')
   const nadia = page.locator('.appointment').filter({ hasText: 'Nadia Farah' })
+  await expect(nadia).toContainText('AUTO-LINKED PATIENT')
+  await page.getByRole('button', { name: 'Match this week', exact: true }).click()
   await expect(nadia).toContainText('AUTO-LINKED PATIENT')
   await nadia.locator('.appointment-main').click()
   await expect(page.locator('.profile-heading h1')).toHaveText('Nadia Farah')
@@ -55,6 +113,10 @@ test('automatic patient matches navigate to the patient and manual unlink surviv
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).last().click()
   await page.getByRole('button', { name: 'Refresh calendar', exact: true }).click()
   await expect(nadia).toContainText('UNLINKED APPOINTMENT')
+  await nadia.locator('.appointment-details').click()
+  await page.getByRole('button', { name: 'Match this appointment', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('Matched automatically by name')
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).last().click()
   const lina = page.locator('.appointment').filter({ hasText: 'Lina' })
   await lina.locator('.appointment-main').click()
   await expect(page.getByRole('heading', { name: 'Possible patients — review' })).toBeVisible()

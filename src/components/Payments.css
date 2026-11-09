@@ -1,0 +1,89 @@
+.dashboard-payments {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  border: 1px solid #d0e2d4;
+  border-radius: 12px;
+  background: #edf5ee;
+  padding: 20px;
+}
+.payment-period-note {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #526b5b;
+}
+.session-meta {
+  flex-wrap: wrap;
+}
+.dashboard-payments span {
+  display: block;
+  color: #365b43;
+  font-size: 12px;
+}
+.dashboard-payments strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 600;
+  margin: 12px 0 8px;
+  overflow-wrap: anywhere;
+}
+.dashboard-payments small {
+  display: block;
+  color: #526b5b;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.patient-payment-reminder {
+  background: #edf5ee;
+  border: 1px solid #d0e2d4;
+  border-left: 4px solid #52846a;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 22px;
+  color: #365b43;
+}
+.patient-payment-reminder h2 {
+  font-size: 16px;
+}
+.patient-payment-reminder p {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 10px 0;
+}
+.patient-payment-reminder summary {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.pending-payment-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid #cbdccf;
+  font-size: 12px;
+}
+.pending-payment-row > span {
+  flex: 1;
+  min-width: 120px;
+}
+.pending-payment-row small {
+  display: block;
+  margin-top: 6px;
+  color: #526b5b;
+}
+@media (max-width: 600px) {
+  .dashboard-payments {
+    gap: 12px;
+    padding: 16px;
+  }
+  .dashboard-payments strong {
+    font-size: 23px;
+  }
+  .patient-payment-reminder {
+    padding: 16px;
+  }
+}

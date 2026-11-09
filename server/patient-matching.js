@@ -23,19 +23,33 @@ export function normalizeName(text = '') {
     .trim()
 }
 function distance(a, b) {
-  const row = Array.from({ length: b.length + 1 }, (_, i) => i)
+  // Restricted Damerau–Levenshtein (optimal string alignment): a neighbouring swap is one edit.
+  const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0))
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j
   for (let i = 1; i <= a.length; i++) {
-    let previous = row[0]
-    row[0] = i
+    matrix[i][0] = i
     for (let j = 1; j <= b.length; j++) {
-      const old = row[j]
-      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, previous + (a[i - 1] === b[j - 1] ? 0 : 1))
-      previous = old
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      )
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        matrix[i][j] = Math.min(matrix[i][j], matrix[i - 2][j - 2] + 1)
     }
   }
-  return row[b.length]
+  return matrix[a.length][b.length]
 }
-const oneEdit = (a, b) => Math.abs(a.length - b.length) <= 1 && distance(a, b) === 1
+const oneEdit = (a, b) => {
+  if (Math.min(a.length, b.length) < 3 || Math.abs(a.length - b.length) > 1) return false
+  if (Math.min(a.length, b.length) === 3) {
+    if (a.length !== b.length) return false
+    return [...a].some(
+      (_, i) => i < a.length - 1 && a.slice(0, i) + a[i + 1] + a[i] + a.slice(i + 2) === b,
+    )
+  }
+  return distance(a, b) === 1
+}
 export function matchAppointment(title, patients) {
   const allWords = normalizeName(title).split(' ').filter(Boolean)
   const words = allWords.filter((w) => !noise.has(w))
@@ -60,11 +74,14 @@ export function matchAppointment(title, patients) {
       score = name.every((w) => words.includes(w)) ? 1 : 0.97
       reason = score === 1 ? 'Full name matches' : 'First and last names match'
     } else {
-      const firstTypo = first.length >= 5 && words.some((w) => w.length >= 5 && oneEdit(w, first))
-      const lastTypo = last.length >= 5 && words.some((w) => w.length >= 5 && oneEdit(w, last))
+      const firstTypo = words.some((w) => oneEdit(w, first))
+      const lastTypo = words.some((w) => oneEdit(w, last))
       if ((firstExact && lastTypo) || (lastExact && firstTypo)) {
         score = 0.95
         reason = 'One small spelling difference'
+      } else if (firstTypo && lastTypo) {
+        score = 0.88
+        reason = 'Small differences in both names — review identity'
       } else if (firstExact || lastExact) {
         score = 0.76
         reason = 'Only part of the name matches'
@@ -78,9 +95,7 @@ export function matchAppointment(title, patients) {
   // Unknown name-like words, family references and competing matches always require review.
   const bestName = best ? normalizeName(best.name).split(' ') : []
   const unexplained = words.filter(
-    (w) =>
-      !bestName.includes(w) &&
-      !bestName.some((n) => n.length >= 5 && w.length >= 5 && oneEdit(n, w)),
+    (w) => !bestName.includes(w) && !bestName.some((n) => oneEdit(n, w)),
   )
   const automatic = Boolean(
     best &&

@@ -7,6 +7,10 @@ const patients = [
   { id: 'b', name: 'Omar Haddad' },
 ]
 test('matching accepts full names, reversed names, accents and one small typo', () => {
+  assert.equal(matchAppointment('Naida Farah', patients).patient_id, 'a')
+  assert.equal(matchAppointment('Frah Nadia', patients).patient_id, 'a')
+  assert.equal(matchAppointment('Lena Tabet', [{ id: 'c', name: 'Lina Tabet' }]).patient_id, 'c')
+  assert.equal(matchAppointment('Ail Khoury', [{ id: 'c', name: 'Ali Khoury' }]).patient_id, 'c')
   assert.equal(matchAppointment('Physio: Nadia Farah - follow-up', patients).patient_id, 'a')
   assert.equal(matchAppointment('Farah Nadia', patients).patient_id, 'a')
   assert.equal(matchAppointment('Nadía Faráh', patients).patient_id, 'a')
@@ -20,6 +24,12 @@ test('matching accepts full names, reversed names, accents and one small typo', 
 })
 test('matching refuses ambiguous names, first-name-only, relatives, archived patients and unrelated words', () => {
   assert.equal(matchAppointment('Nadia', patients).patient_id, null)
+  assert.equal(matchAppointment('Aly Khoury', [{ id: 'c', name: 'Ali Khoury' }]).patient_id, null)
+  assert.equal(matchAppointment('Aidna Farah', patients).patient_id, null)
+  assert.equal(matchAppointment('Nadyaa Faraaah', patients).patient_id, null)
+  const both = matchAppointment('Nadya Farih', patients)
+  assert.equal(both.patient_id, null)
+  assert.equal(both.candidates[0].patient_id, 'a')
   assert.equal(
     matchAppointment('Nadia Farah', [...patients, { id: 'c', name: 'Nadya Farah' }]).patient_id,
     null,
