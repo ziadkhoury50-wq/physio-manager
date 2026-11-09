@@ -52,9 +52,29 @@
   color: #67736f;
 }
 .patient-payment-reminder summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
   cursor: pointer;
   font-size: 12px;
   line-height: 1.8;
+}
+.patient-payment-reminder summary::-webkit-details-marker {
+  display: none;
+}
+.patient-payment-reminder summary svg {
+  flex-shrink: 0;
+  transition: transform 180ms ease;
+}
+.patient-payment-reminder details[open] summary svg {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .patient-payment-reminder summary svg {
+    transition: none;
+  }
 }
 .pending-payment-row {
   display: flex;

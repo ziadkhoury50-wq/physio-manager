@@ -199,39 +199,6 @@ export function PatientProfile({
           Edit patient
         </button>
       </div>
-      {payments.pendingTotal > 0 && (
-        <section className="patient-payment-reminder" aria-label="Payments not marked received">
-          <h2>Not marked received: {usd(payments.pendingTotal)}</h2>
-          <p>
-            {payments.pending.length} session{payments.pending.length === 1 ? '' : 's'} need payment
-            follow-up.
-            {payments.unconfirmed
-              ? ` ${payments.unconfirmed} have no payment status recorded yet.`
-              : ''}
-          </p>
-          <details>
-            <summary>Review session payments</summary>
-            {payments.pending.map((s) => (
-              <div className="pending-payment-row" key={s.id}>
-                <span>
-                  {formatDate(s.session_date, { year: 'numeric' })}
-                  <small>
-                    {usd(s.amount_cents)} · {paymentLabel(s)}
-                  </small>
-                </span>
-                <button
-                  type="button"
-                  className="button secondary"
-                  disabled={saving}
-                  onClick={() => markPaymentReceived(s)}
-                >
-                  Mark received
-                </button>
-              </div>
-            ))}
-          </details>
-        </section>
-      )}
       {latestSession && (
         <section className="patient-next-plan" aria-label="Next session reminder">
           <Pin size={21} />
@@ -265,6 +232,41 @@ export function PatientProfile({
           >
             Update plan
           </button>
+        </section>
+      )}
+      {payments.pendingTotal > 0 && (
+        <section className="patient-payment-reminder" aria-label="Payments not marked received">
+          <h2>Not marked received: {usd(payments.pendingTotal)}</h2>
+          <p>
+            {payments.pending.length} session{payments.pending.length === 1 ? '' : 's'} need payment
+            follow-up.
+            {payments.unconfirmed
+              ? ` ${payments.unconfirmed} have no payment status recorded yet.`
+              : ''}
+          </p>
+          <details>
+            <summary>
+              Review session payments <ChevronRight size={16} aria-hidden="true" />
+            </summary>
+            {payments.pending.map((s) => (
+              <div className="pending-payment-row" key={s.id}>
+                <span>
+                  {formatDate(s.session_date, { year: 'numeric' })}
+                  <small>
+                    {usd(s.amount_cents)} · {paymentLabel(s)}
+                  </small>
+                </span>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={saving}
+                  onClick={() => markPaymentReceived(s)}
+                >
+                  Mark received
+                </button>
+              </div>
+            ))}
+          </details>
         </section>
       )}
       <div className="profile-layout">
