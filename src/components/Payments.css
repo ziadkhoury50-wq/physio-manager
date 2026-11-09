@@ -2,23 +2,23 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  border: 1px solid #d0e2d4;
+  border: 1px solid #e3e7e6;
   border-radius: 12px;
-  background: #edf5ee;
+  background: #fff;
   padding: 20px;
 }
 .payment-period-note {
   grid-column: 1 / -1;
   font-size: 11px;
   line-height: 1.7;
-  color: #526b5b;
+  color: #67736f;
 }
 .session-meta {
   flex-wrap: wrap;
 }
 .dashboard-payments span {
   display: block;
-  color: #365b43;
+  color: #4d5854;
   font-size: 12px;
 }
 .dashboard-payments strong {
@@ -30,18 +30,17 @@
 }
 .dashboard-payments small {
   display: block;
-  color: #526b5b;
+  color: #67736f;
   font-size: 11px;
   line-height: 1.7;
 }
 .patient-payment-reminder {
-  background: #edf5ee;
-  border: 1px solid #d0e2d4;
-  border-left: 4px solid #52846a;
+  background: #fff;
+  border: 1px solid #e3e7e6;
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 22px;
-  color: #365b43;
+  color: #28332f;
 }
 .patient-payment-reminder h2 {
   font-size: 16px;
@@ -50,6 +49,7 @@
   font-size: 12px;
   line-height: 1.8;
   margin: 10px 0;
+  color: #67736f;
 }
 .patient-payment-reminder summary {
   cursor: pointer;
@@ -63,7 +63,7 @@
   flex-wrap: wrap;
   padding-top: 14px;
   margin-top: 14px;
-  border-top: 1px solid #cbdccf;
+  border-top: 1px solid #e8ebe9;
   font-size: 12px;
 }
 .pending-payment-row > span {
@@ -73,7 +73,7 @@
 .pending-payment-row small {
   display: block;
   margin-top: 6px;
-  color: #526b5b;
+  color: #67736f;
 }
 @media (max-width: 600px) {
   .dashboard-payments {
