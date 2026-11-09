@@ -222,10 +222,7 @@ export default function WorkspaceDialogs({
                 inputMode="decimal"
                 maxLength={12}
                 value={draft.amount ?? ''}
-                onChange={(e) => {
-                  update('amount', e.target.value)
-                  if (draft.payment_received === 'received') update('payment_received', '')
-                }}
+                onChange={(e) => update('amount', e.target.value)}
                 placeholder="e.g. 50.00"
               />
             </Field>
@@ -233,11 +230,14 @@ export default function WorkspaceDialogs({
               <Select
                 value={Number(draft.amount) > 0 ? draft.payment_received || '' : ''}
                 disabled={!(Number(draft.amount) > 0)}
+                required={Number(draft.amount) > 0}
                 onChange={(e) => update('payment_received', e.target.value)}
               >
-                <option value="">Not marked</option>
-                <option value="not_received">Not received</option>
+                <option value="">
+                  {Number(draft.amount) > 0 ? 'Choose payment status' : 'Enter an amount first'}
+                </option>
                 <option value="received">Received</option>
+                <option value="not_received">Not received</option>
               </Select>
             </Field>
             <Field label="Symptoms / how the patient feels" wide>

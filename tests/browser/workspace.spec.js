@@ -18,8 +18,9 @@ test('received flags update patient reminders and filtered dashboard payment tot
   await chooseOption(page, 'Patient *', 'Nadia Farah')
   await page.getByLabel('Session amount (USD)', { exact: true }).fill('45.25')
   await expect(page.getByRole('combobox', { name: 'Payment status', exact: true })).toContainText(
-    'Not received',
+    'Received',
   )
+  await chooseOption(page, 'Payment status', 'Not received')
   await page.getByLabel('Treatment performed *', { exact: true }).fill('Payment tracking session')
   await page.getByRole('button', { name: 'Save session', exact: true }).click()
   await tab(page, 'Dashboard')
@@ -41,7 +42,7 @@ test('received flags update patient reminders and filtered dashboard payment tot
   await page.getByRole('button', { name: 'Edit session', exact: true }).click()
   await page.getByLabel('Session amount (USD)', { exact: true }).fill('50.00')
   await expect(page.getByRole('combobox', { name: 'Payment status', exact: true })).toContainText(
-    'Not marked',
+    'Received',
   )
   await page.getByLabel('Session amount (USD)', { exact: true }).fill('45.25')
   await chooseOption(page, 'Payment status', 'Not received')

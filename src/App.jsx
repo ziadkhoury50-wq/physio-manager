@@ -62,7 +62,7 @@ const newSession = {
   progress: '',
   plan: '',
   amount: '',
-  payment_received: 'not_received',
+  payment_received: 'received',
 }
 
 export default function App() {
@@ -394,6 +394,9 @@ export default function App() {
     if (!isPatient) {
       try {
         const cents = parseUsd(draft.amount)
+        if (cents > 0 && !['received', 'not_received'].includes(draft.payment_received)) {
+          throw new Error('Choose Received or Not received for this session.')
+        }
         record.payment_received =
           cents > 0
             ? draft.payment_received === 'received'
