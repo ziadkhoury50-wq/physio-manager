@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   CalendarDays,
   CheckCircle2,
@@ -87,6 +87,7 @@ export default function App() {
   const [calendars, setCalendars] = useState([])
   const [calendarId, setCalendarId] = useState('')
   const [events, setEvents] = useState([])
+  const linkGeneration = useRef(0)
   const [calendarBusy, setCalendarBusy] = useState(false)
   const [calendarError, setCalendarError] = useState('')
   const [refresh, setRefresh] = useState(0)
@@ -240,7 +241,7 @@ export default function App() {
     }
   }, [connection, allowed, refresh])
   useEffect(() => {
-    if (!connection || !calendarId || !allowed) return
+    if (!connection || !calendarId || !allowed || loading) return
     let active = true
     // Clear the previous calendar while the selected range loads from Google.
     // oxlint-disable-next-line react/set-state-in-effect
@@ -248,6 +249,7 @@ export default function App() {
     setCalendarError('')
     setEvents([])
     const week = weekDates(day)
+    const linkVersion = linkGeneration.current
     calendarApi('events', {
       calendarId,
       timeMin: `${addDays(week[0], -1)}T00:00:00Z`,
@@ -256,6 +258,23 @@ export default function App() {
       .then((result) => {
         if (active) {
           setEvents(result.items)
+          if (result.links && linkVersion === linkGeneration.current)
+            setData((current) => ({
+              ...current,
+              links: [
+                ...current.links.filter((link) => link.calendar_id !== calendarId),
+                ...result.links,
+              ],
+            }))
+          if (result.matchingWarning) {
+            setNotice(result.matchingWarning)
+            setData((current) => ({
+              ...current,
+              links: current.links.filter(
+                (link) => link.calendar_id !== calendarId || link.source !== 'automatic',
+              ),
+            }))
+          }
           setSavedAt(new Date())
         }
       })
@@ -268,7 +287,7 @@ export default function App() {
     return () => {
       active = false
     }
-  }, [connection, calendarId, day, refresh, allowed])
+  }, [connection, calendarId, day, refresh, allowed, loading])
   useEffect(() => {
     const onFocus = () => {
       if (document.visibilityState === 'visible') setRefresh((value) => value + 1)
@@ -459,6 +478,7 @@ export default function App() {
     }
   }
   async function linkPatient(eventId, id) {
+    linkGeneration.current++
     setSaving(true)
     setFormError('')
     try {
@@ -466,16 +486,26 @@ export default function App() {
         method: id ? 'PUT' : 'DELETE',
         body: { calendar_id: calendarId, event_id: eventId, ...(id ? { patient_id: id } : {}) },
       })
+      linkGeneration.current++
       setData((current) => ({
         ...current,
         links: [
           ...current.links.filter(
             (link) => !(link.calendar_id === calendarId && link.event_id === eventId),
           ),
-          ...(id ? [{ calendar_id: calendarId, event_id: eventId, patient_id: id }] : []),
+          {
+            calendar_id: calendarId,
+            event_id: eventId,
+            patient_id: id || null,
+            source: id ? 'manual' : 'blocked',
+          },
         ],
       }))
-      setNotice(id ? 'Appointment linked to patient.' : 'Patient link removed.')
+      setNotice(
+        id
+          ? 'Appointment linked to patient.'
+          : 'Appointment kept unlinked. Automatic matching is off for this appointment.',
+      )
     } catch (error) {
       setFormError(error.message)
     } finally {

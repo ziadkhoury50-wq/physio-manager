@@ -85,6 +85,12 @@ OAuth uses expiring, atomically consumed state and PKCE. Refresh tokens and PKCE
 
 ## Express API
 
+### Automatic calendar patient matching
+
+Apply `supabase/migrations/202611090001_calendar_matching.sql`. On calendar fetch, Express compares appointment titles with active patient names using case/accent normalization, Arabic diacritic/alef normalization, reversed name order, first/last name matching, and a single small spelling difference in longer names. Strong unique matches are stored and labelled automatic. Partial names, competing candidates, unknown title words, family references and archived candidates require review. This is deterministic name similarity, not proof of identity; similarity scores are not clinical probabilities. No names are sent to Gemini and no Google events are modified.
+
+Manual links are never replaced by automatic insertion. Selecting No patient linked creates a doctor-only blocked record so refresh cannot undo that choice. Changed or newly ambiguous automatic matches are kept unlinked for review rather than reassigned. Suggestions can be selected manually. Existing links migrate as manual. A matching outage leaves the calendar readable, removes automatic associations from the current view, and shows a warning.
+
 ### Patient age and clinical tabs
 
 For visit-based assessment and pain management, also run `supabase/migrations/202611080002_session_assessments.sql`. Each session stores its own assessment findings and pain-management plan. The profile's equal-width tabs retain session history and add a progress workspace: recorded visit count, latest available pain score, numeric change from the first available pain score, last visit, a chronological pain plot and visit-by-visit clinical notes. Missing scores are not zero; a change needs two recorded scores. Patient-level notes remain available under Patient background and are not copied into historical sessions.

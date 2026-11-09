@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { HttpError } from './errors.js'
 import { createCalendarService } from './google-calendar.js'
+import { matchAppointment, normalizeName } from './patient-matching.js'
 
 const patientColumns =
   'id,owner_id,name,phone,referred_by,age,symptoms,assessment,pain_management,condition,underlying_conditions,medication,history,goals,archived,created_at,updated_at'
@@ -55,6 +56,82 @@ export function createServices(config) {
       return { id: user.id, db }
     },
     records: {
+      async autoLink({ db, id: owner }, calendarId, events) {
+        const [patients, existing] = await Promise.all([
+          readAll(db, 'patients', 'name'),
+          readAll(db, 'appointment_links', 'calendar_id', true, 'event_id'),
+        ])
+        const inserts = [],
+          suggestions = new Map()
+        for (const event of events) {
+          if (!event.id || event.status === 'cancelled') continue
+          const link = existing.find(
+            (row) => row.calendar_id === calendarId && row.event_id === event.id,
+          )
+          if (link && (!link.source || link.source === 'manual')) continue
+          const match = matchAppointment(event.summary || '', patients)
+          suggestions.set(event.id, match.candidates)
+          if (link?.source === 'blocked') continue
+          const patient = patients.find((p) => p.id === match.patient_id)
+          if (link?.source === 'automatic') {
+            if (
+              link.patient_id === match.patient_id &&
+              link.matched_event_name === normalizeName(event.summary || '') &&
+              link.matched_patient_name === normalizeName(patient?.name || '')
+            )
+              continue
+            // A changed title, changed name, or new ambiguity needs review; do not move an old match.
+            const { error } = await db
+              .from('appointment_links')
+              .update({
+                patient_id: null,
+                source: 'blocked',
+                matched_event_name: '',
+                matched_patient_name: '',
+              })
+              .eq('owner_id', owner)
+              .eq('calendar_id', calendarId)
+              .eq('event_id', event.id)
+              .eq('source', 'automatic')
+            if (error)
+              throw new HttpError(503, 'Automatic matching could not be updated. Please refresh.')
+            continue
+          }
+          if (patient)
+            inserts.push({
+              owner_id: owner,
+              calendar_id: calendarId,
+              event_id: event.id,
+              patient_id: patient.id,
+              source: 'automatic',
+              matched_event_name: normalizeName(event.summary || ''),
+              matched_patient_name: normalizeName(patient.name),
+            })
+        }
+        if (inserts.length) {
+          const { error } = await db
+            .from('appointment_links')
+            .upsert(inserts, {
+              onConflict: 'owner_id,calendar_id,event_id',
+              ignoreDuplicates: true,
+            })
+          if (error)
+            throw new HttpError(
+              503,
+              'Automatic matching needs the database update: run 202611090001_calendar_matching.sql, then refresh.',
+            )
+        }
+        const links = (
+          await readAll(db, 'appointment_links', 'calendar_id', true, 'event_id')
+        ).filter((row) => row.calendar_id === calendarId)
+        return {
+          links,
+          items: events.map((event) => ({
+            ...event,
+            patientMatch: { candidates: suggestions.get(event.id) || [] },
+          })),
+        }
+      },
       async remove({ db }, table, id) {
         const { data, error } =
           table === 'patients'
@@ -107,7 +184,16 @@ export function createServices(config) {
       async link({ db, id: owner }, record) {
         const { data, error } = await db
           .from('appointment_links')
-          .upsert({ ...record, owner_id: owner }, { onConflict: 'owner_id,calendar_id,event_id' })
+          .upsert(
+            {
+              ...record,
+              owner_id: owner,
+              source: 'manual',
+              matched_event_name: '',
+              matched_patient_name: '',
+            },
+            { onConflict: 'owner_id,calendar_id,event_id' },
+          )
           .select()
           .single()
         if (error)
@@ -117,12 +203,21 @@ export function createServices(config) {
           )
         return data
       },
-      async unlink({ db }, { calendar_id, event_id }) {
+      async unlink({ db, id: owner }, { calendar_id, event_id }) {
         const { error } = await db
           .from('appointment_links')
-          .delete()
-          .eq('calendar_id', calendar_id)
-          .eq('event_id', event_id)
+          .upsert(
+            {
+              owner_id: owner,
+              calendar_id,
+              event_id,
+              patient_id: null,
+              source: 'blocked',
+              matched_event_name: '',
+              matched_patient_name: '',
+            },
+            { onConflict: 'owner_id,calendar_id,event_id' },
+          )
         if (error) throw new HttpError(503, 'Could not remove this patient link. Please try again.')
       },
     },

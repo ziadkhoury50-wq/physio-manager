@@ -1,9 +1,71 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { mockWorkspace } from '../fixtures/mock-workspace.js'
+import { fixtureData } from '../fixtures/workspace.js'
 
 test.beforeEach(async ({ page }) => {
   await mockWorkspace(page)
+})
+
+test('automatic patient matches navigate to the patient and manual unlink survives calendar refresh', async ({
+  page,
+}) => {
+  const data = fixtureData()
+  let links = [
+    { calendar_id: 'demo', event_id: 'event-1', patient_id: 'demo-1', source: 'automatic' },
+  ]
+  const items = data.events.map((event) => ({
+    ...event,
+    summary: event.id === 'event-3' ? 'Lina' : event.summary,
+    patientMatch: {
+      candidates:
+        event.id === 'event-3'
+          ? [{ patient_id: 'demo-3', name: 'Lina Tabet', reason: 'Only part of the name matches' }]
+          : [],
+    },
+  }))
+  await page.route('**/api/calendar/events?*', (route) =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ items, links }) }),
+  )
+  await page.route('**/api/appointment-links', async (route) => {
+    const body = route.request().postDataJSON()
+    links = links.filter((r) => r.event_id !== body.event_id)
+    const link = {
+      ...body,
+      patient_id: body.patient_id || null,
+      source: body.patient_id ? 'manual' : 'blocked',
+    }
+    links.push(link)
+    return route.fulfill(
+      route.request().method() === 'DELETE'
+        ? { status: 204 }
+        : { contentType: 'application/json', body: JSON.stringify(link) },
+    )
+  })
+  await page.goto('/')
+  const nadia = page.locator('.appointment').filter({ hasText: 'Nadia Farah' })
+  await expect(nadia).toContainText('AUTO-LINKED PATIENT')
+  await nadia.locator('.appointment-main').click()
+  await expect(page.locator('.profile-heading h1')).toHaveText('Nadia Farah')
+  await tab(page, 'Calendar')
+  await nadia.locator('.appointment-details').click()
+  await expect(page.getByRole('dialog')).toContainText('Matched automatically by name')
+  await chooseOption(page, 'Link to a patient', 'No patient linked')
+  await expect(page.getByRole('dialog')).toContainText('Kept unlinked')
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Refresh calendar', exact: true }).click()
+  await expect(nadia).toContainText('UNLINKED APPOINTMENT')
+  const lina = page.locator('.appointment').filter({ hasText: 'Lina' })
+  await lina.locator('.appointment-main').click()
+  await expect(page.getByRole('heading', { name: 'Possible patients — review' })).toBeVisible()
+  await page.getByRole('button', { name: /Lina Tabet.*Only part/ }).click()
+  await expect(
+    page.getByRole('combobox', { name: 'Link to a patient', exact: true }),
+  ).toContainText('Lina Tabet')
+  await expect(
+    page.getByRole('dialog').getByRole('button', { name: 'Record session', exact: true }),
+  ).toBeEnabled()
+  await noOverflow(page)
 })
 
 test('session progress and field AI popups preserve notes and require review before insertion', async ({

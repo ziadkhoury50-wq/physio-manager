@@ -140,7 +140,15 @@ export default function Calendar({
                   <div className={`appointment appointment-${index % 4}`}>
                     <div className="appointment-top">
                       <span className="appointment-type">
-                        {person ? 'PATIENT APPOINTMENT' : 'GOOGLE CALENDAR'}
+                        {person
+                          ? link?.source === 'automatic'
+                            ? 'AUTO-LINKED PATIENT'
+                            : 'PATIENT APPOINTMENT'
+                          : link?.source === 'blocked'
+                            ? 'UNLINKED APPOINTMENT'
+                            : event.patientMatch?.candidates?.length
+                              ? 'REVIEW PATIENT MATCH'
+                              : 'GOOGLE CALENDAR'}
                       </span>
                       <button
                         className="appointment-details"

@@ -1,0 +1,32 @@
+.event-details .matching-note {
+  padding: 12px;
+  border: 1px solid #d4e3d6;
+  border-radius: 8px;
+  background: #edf5ee;
+  color: #365b43;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.patient-match-suggestions {
+  display: grid;
+  gap: 10px;
+}
+.patient-match-suggestions h3 {
+  font-size: 13px;
+}
+.patient-match-suggestions p {
+  color: #526b5b;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.patient-match-suggestions .button {
+  text-align: left;
+  justify-content: space-between;
+  white-space: normal;
+}
+.patient-match-suggestions small {
+  display: block;
+  font-size: 10px;
+  color: #526b5b;
+  margin-top: 4px;
+}

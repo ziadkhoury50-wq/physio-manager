@@ -82,6 +82,12 @@ test('database enforces the single doctor, ownership, private integration storag
         'utf8',
       ),
     )
+    await db.exec(
+      await readFile(
+        new URL('../supabase/migrations/202611090001_calendar_matching.sql', import.meta.url),
+        'utf8',
+      ),
+    )
     await db.exec(`insert into public.app_access(doctor_user_id) values ('${doctor}');`)
     await assert.rejects(() =>
       db.exec(`insert into public.app_access(doctor_user_id) values ('${other}');`),
@@ -90,6 +96,20 @@ test('database enforces the single doctor, ownership, private integration storag
       `set role authenticated; select set_config('request.jwt.claim.sub', '${doctor}', false);`,
     )
     assert.equal((await db.query('select public.is_doctor() as allowed')).rows[0].allowed, true)
+    await db.exec(
+      "insert into public.appointment_links(calendar_id,event_id,patient_id,source) values ('cal','blocked',null,'blocked');",
+    )
+    assert.equal(
+      (await db.query("select patient_id from public.appointment_links where event_id='blocked'"))
+        .rows[0].patient_id,
+      null,
+    )
+    await assert.rejects(() =>
+      db.exec(
+        "insert into public.appointment_links(calendar_id,event_id,patient_id,source) values ('cal','invalid',null,'automatic');",
+      ),
+    )
+    await db.exec("delete from public.appointment_links where event_id='blocked';")
     await db.exec(
       `insert into public.patients(id, name, referred_by, underlying_conditions, medication) values ('${patient}', 'Synthetic Patient', 'Dr. Referral', 'Recorded condition', 'Recorded medication');`,
     )

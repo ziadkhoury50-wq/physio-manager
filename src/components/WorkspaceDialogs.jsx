@@ -17,6 +17,7 @@ import './Select.css'
 import ClinicalAssistant from './ClinicalAssistant'
 import { usd } from '../lib/revenue'
 import FieldAIHelp from './FieldAIHelp'
+import './PatientMatching.css'
 
 export default function WorkspaceDialogs({
   modal,
@@ -439,6 +440,48 @@ export default function WorkspaceDialogs({
             <a className="text-link" href={event.htmlLink} target="_blank" rel="noreferrer">
               Open in Google Calendar <ExternalLink size={14} />
             </a>
+          )}
+          {link?.source === 'automatic' && (
+            <p className="matching-note">
+              Matched automatically by name. You can change or remove the link below.
+            </p>
+          )}
+          {link?.source === 'blocked' && (
+            <p className="matching-note">
+              Kept unlinked. Automatic matching is off for this appointment; you can still select a
+              patient manually.
+            </p>
+          )}
+          {!person && link?.source !== 'blocked' && event.patientMatch?.candidates?.length > 0 && (
+            <section className="patient-match-suggestions">
+              <h3>Possible patients — review</h3>
+              <p>Name similarity does not confirm identity. Choose the correct patient.</p>
+              {event.patientMatch.candidates.map((candidate) => (
+                <button
+                  type="button"
+                  className="button secondary"
+                  key={candidate.patient_id}
+                  disabled={saving}
+                  onClick={() => linkPatient(event.id, candidate.patient_id)}
+                >
+                  <span>
+                    {candidate.name}
+                    <small>{candidate.reason}</small>
+                  </span>
+                  <ArrowRight size={15} />
+                </button>
+              ))}
+              {link?.source !== 'blocked' && (
+                <button
+                  type="button"
+                  className="text-link"
+                  disabled={saving}
+                  onClick={() => linkPatient(event.id, '')}
+                >
+                  Keep this appointment unlinked
+                </button>
+              )}
+            </section>
           )}
           <Field label="Link to a patient">
             <Select

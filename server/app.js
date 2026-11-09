@@ -155,9 +155,30 @@ export function createApp({
   app.get('/api/calendar/calendars', async (req, res) =>
     res.json(await services.calendar.calendars(req.doctor.id)),
   )
-  app.get('/api/calendar/events', async (req, res) =>
-    res.json(await services.calendar.events(req.doctor.id, eventQuerySchema.parse(req.query))),
-  )
+  app.get('/api/calendar/events', async (req, res) => {
+    const query = eventQuerySchema.parse(req.query)
+    const result = await services.calendar.events(req.doctor.id, query)
+    try {
+      res.json(
+        services.records.autoLink
+          ? {
+              ...result,
+              ...(await services.records.autoLink(
+                req.doctor,
+                query.calendarId,
+                result.items || [],
+              )),
+            }
+          : result,
+      )
+    } catch {
+      res.json({
+        ...result,
+        matchingWarning:
+          'Calendar loaded, but automatic patient linking could not finish. Check the calendar matching database update and refresh.',
+      })
+    }
+  })
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found.' }))
 
   if (distPath && existsSync(join(distPath, 'index.html'))) {
