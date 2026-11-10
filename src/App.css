@@ -1847,6 +1847,15 @@ h1 {
     z-index: 30;
     backdrop-filter: blur(15px);
   }
+  @supports (-webkit-touch-callout: none) {
+    @media (display-mode: standalone) {
+      .mobile-nav {
+        bottom: 0;
+        padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        -webkit-backdrop-filter: blur(15px);
+      }
+    }
+  }
   .mobile-nav a {
     display: flex;
     align-items: center;
