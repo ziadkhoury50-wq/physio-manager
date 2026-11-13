@@ -193,7 +193,6 @@ export function PatientProfile({
         <div>
           <span className="eyebrow">PATIENT PROFILE</span>
           <h1>{patient.name}</h1>
-          <p>{patient.condition || 'No condition recorded'}</p>
         </div>
         <button className="button secondary" onClick={() => openPatient(patient)}>
           Edit patient
@@ -273,6 +272,8 @@ export function PatientProfile({
         <aside className="panel patient-information">
           <h2 className="patient-information-title">Patient information</h2>
           <dl>
+            <dt>Diagnosis</dt>
+            <dd>{patient.condition || 'Not recorded'}</dd>
             <dt>Phone</dt>
             <dd>{patient.phone || 'Not provided'}</dd>
             <dt>Referred by</dt>
@@ -373,7 +374,7 @@ export function PatientProfile({
               </button>
               <div className="profile-notes">
                 {[
-                  ['Presenting condition', patient.condition, 'No presenting condition recorded.'],
+                  ['Diagnosis', patient.condition, 'No diagnosis recorded.'],
                   ['Symptoms', patient.symptoms, 'No symptoms recorded yet.'],
                   [
                     'Previous patient-level assessment',

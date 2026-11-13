@@ -101,7 +101,7 @@ export default function WorkspaceDialogs({
                 placeholder="Name of the doctor or person who referred them"
               />
             </Field>
-            <Field label="Presenting condition">
+            <Field label="Diagnosis">
               <input
                 maxLength={300}
                 value={draft.condition}
