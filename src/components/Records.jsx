@@ -284,10 +284,6 @@ export function PatientProfile({
                 ? 'Not provided'
                 : `${patient.age} ${patient.age === 1 ? 'year' : 'years'}`}
             </dd>
-            <dt>Status</dt>
-            <dd>
-              <span className="status-pill">{patient.archived ? 'Archived' : 'Active'}</span>
-            </dd>
           </dl>
           <div className="patient-record-actions">
             <button
