@@ -19,6 +19,7 @@ import ClinicalAssistant from './ClinicalAssistant'
 import { paymentLabel, usd } from '../lib/revenue'
 import FieldAIHelp from './FieldAIHelp'
 import './PatientMatching.css'
+import { IntakeSettings, PatientIntakeForm } from './PatientIntake'
 
 export default function WorkspaceDialogs({
   modal,
@@ -48,6 +49,7 @@ export default function WorkspaceDialogs({
   auth,
   onProfile,
   onSignOut,
+  onTemplateDirty,
 }) {
   const sessionPatient = data.patients.find((item) => item.id === draft.patient_id)
   if (!modal) return null
@@ -61,109 +63,111 @@ export default function WorkspaceDialogs({
         wide
       >
         <form onSubmit={saveRecord}>
-          <div className="form-grid">
-            <Field label="Full name *">
-              <input
-                required
-                maxLength={160}
-                autoComplete="off"
-                value={draft.name}
-                onChange={(e) => update('name', e.target.value)}
-                placeholder="Patient’s full name"
-              />
-            </Field>
-            <Field label="Age" hint="Age in whole years, as recorded.">
-              <input
-                type="number"
-                min="0"
-                max="130"
-                step="1"
-                inputMode="numeric"
-                value={draft.age}
-                onChange={(e) => update('age', e.target.value)}
-              />
-            </Field>
-            <Field label="Phone number">
-              <input
-                type="tel"
-                maxLength={50}
-                value={draft.phone}
-                onChange={(e) => update('phone', e.target.value)}
-                placeholder="+961 …"
-              />
-            </Field>
-            <Field label="Referred by">
-              <input
-                type="text"
-                maxLength={300}
-                value={draft.referred_by}
-                onChange={(e) => update('referred_by', e.target.value)}
-                placeholder="Name of the doctor or person who referred them"
-              />
-            </Field>
-            <Field label="Diagnosis">
-              <input
-                maxLength={300}
-                value={draft.condition}
-                onChange={(e) => update('condition', e.target.value)}
-                placeholder="e.g. Right shoulder rehabilitation"
-              />
-            </Field>
-            <Field label="Pain management">
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.pain_management || ''}
-                onChange={(e) => update('pain_management', e.target.value)}
-                placeholder="Pain-management strategies, advice, precautions, and review"
-              />
-            </Field>
-            <Field label="Relevant history">
-              <textarea
-                rows={2}
-                maxLength={10000}
-                value={draft.underlying_conditions}
-                onChange={(e) => update('underlying_conditions', e.target.value)}
-                placeholder="Relevant medical history, previous injuries, or precautions"
-              />
-            </Field>
-            <Field label="Medication" wide>
-              <textarea
-                rows={2}
-                maxLength={10000}
-                value={draft.medication}
-                onChange={(e) => update('medication', e.target.value)}
-                placeholder="Current medications and relevant details"
-              />
-            </Field>
-            <Field label="Symptoms" wide>
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.symptoms}
-                onChange={(e) => update('symptoms', e.target.value)}
-                placeholder="Reported symptoms, location, onset, and aggravating or easing factors"
-              />
-            </Field>
-            <Field label="Underlying conditions" wide>
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.history}
-                onChange={(e) => update('history', e.target.value)}
-                placeholder="Other health conditions or relevant diagnoses"
-              />
-            </Field>
-            <Field label="Treatment goals" wide>
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.goals}
-                onChange={(e) => update('goals', e.target.value)}
-                placeholder="What would the patient like to get back to?"
-              />
-            </Field>
-          </div>
+          <PatientIntakeForm draft={draft} update={update}>
+            <div className="form-grid">
+              <Field label="Full name *">
+                <input
+                  required
+                  maxLength={160}
+                  autoComplete="off"
+                  value={draft.name}
+                  onChange={(e) => update('name', e.target.value)}
+                  placeholder="Patient’s full name"
+                />
+              </Field>
+              <Field label="Age" hint="Age in whole years, as recorded.">
+                <input
+                  type="number"
+                  min="0"
+                  max="130"
+                  step="1"
+                  inputMode="numeric"
+                  value={draft.age}
+                  onChange={(e) => update('age', e.target.value)}
+                />
+              </Field>
+              <Field label="Phone number">
+                <input
+                  type="tel"
+                  maxLength={50}
+                  value={draft.phone}
+                  onChange={(e) => update('phone', e.target.value)}
+                  placeholder="+961 …"
+                />
+              </Field>
+              <Field label="Referred by">
+                <input
+                  type="text"
+                  maxLength={300}
+                  value={draft.referred_by}
+                  onChange={(e) => update('referred_by', e.target.value)}
+                  placeholder="Name of the doctor or person who referred them"
+                />
+              </Field>
+              <Field label="Diagnosis">
+                <input
+                  maxLength={300}
+                  value={draft.condition}
+                  onChange={(e) => update('condition', e.target.value)}
+                  placeholder="e.g. Right shoulder rehabilitation"
+                />
+              </Field>
+              <Field label="Pain management">
+                <textarea
+                  rows={3}
+                  maxLength={10000}
+                  value={draft.pain_management || ''}
+                  onChange={(e) => update('pain_management', e.target.value)}
+                  placeholder="Pain-management strategies, advice, precautions, and review"
+                />
+              </Field>
+              <Field label="Relevant history">
+                <textarea
+                  rows={2}
+                  maxLength={10000}
+                  value={draft.underlying_conditions}
+                  onChange={(e) => update('underlying_conditions', e.target.value)}
+                  placeholder="Relevant medical history, previous injuries, or precautions"
+                />
+              </Field>
+              <Field label="Medication" wide>
+                <textarea
+                  rows={2}
+                  maxLength={10000}
+                  value={draft.medication}
+                  onChange={(e) => update('medication', e.target.value)}
+                  placeholder="Current medications and relevant details"
+                />
+              </Field>
+              <Field label="Symptoms" wide>
+                <textarea
+                  rows={3}
+                  maxLength={10000}
+                  value={draft.symptoms}
+                  onChange={(e) => update('symptoms', e.target.value)}
+                  placeholder="Reported symptoms, location, onset, and aggravating or easing factors"
+                />
+              </Field>
+              <Field label="Underlying conditions" wide>
+                <textarea
+                  rows={3}
+                  maxLength={10000}
+                  value={draft.history}
+                  onChange={(e) => update('history', e.target.value)}
+                  placeholder="Other health conditions or relevant diagnoses"
+                />
+              </Field>
+              <Field label="Treatment goals" wide>
+                <textarea
+                  rows={3}
+                  maxLength={10000}
+                  value={draft.goals}
+                  onChange={(e) => update('goals', e.target.value)}
+                  placeholder="What would the patient like to get back to?"
+                />
+              </Field>
+            </div>
+          </PatientIntakeForm>
           {formError && (
             <p role="alert" className="form-error">
               {formError}
@@ -566,11 +570,13 @@ export default function WorkspaceDialogs({
     return (
       <Dialog
         key="settings"
+        wide
         title="Your workspace"
         subtitle="Just the essentials for your practice."
         onClose={closeModal}
       >
         <div className="settings-content">
+          <IntakeSettings onDirty={onTemplateDirty} />
           <Field label="Clinic time zone">
             <Select value={timeZone} onChange={(e) => setTimeZone(e.target.value)}>
               {[

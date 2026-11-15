@@ -1,11 +1,13 @@
 import { fixtureData } from './workspace.js'
 import { testSession } from './session.js'
 import { randomUUID } from 'node:crypto'
+import { summarizeIntake } from '../../server/intake.js'
 
 // These fixtures intercept browser requests only. Nothing is written to Supabase.
 export async function mockWorkspace(page) {
   const data = fixtureData()
   const session = testSession()
+  let template = { tabs: [], updated_at: null }
   await page.addInitScript(
     (value) => localStorage.setItem('sb-127-auth-token', JSON.stringify(value)),
     session,
@@ -21,9 +23,13 @@ export async function mockWorkspace(page) {
     const path = new URL(request.url()).pathname
     const method = request.method()
     const body = request.postDataJSON()
+    if (body?.intake && !body.intake.summary) body.intake.summary = summarizeIntake(body.intake)
     let result
     if (path === '/api/access') result = { allowed: true }
-    else if (path === '/api/records')
+    else if (path === '/api/intake-template') {
+      if (method === 'PUT') template = { ...body, updated_at: new Date().toISOString() }
+      result = template
+    } else if (path === '/api/records')
       result = { patients: data.patients, sessions: data.sessions, links: data.links }
     else if (path === '/api/calendar/status') result = { connected: true }
     else if (path === '/api/calendar/calendars')

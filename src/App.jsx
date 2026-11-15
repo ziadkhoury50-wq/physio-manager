@@ -51,6 +51,7 @@ const newPatient = {
   medication: '',
   history: '',
   goals: '',
+  intake: { tabs: [], answers: {}, summary: '' },
 }
 const newSession = {
   patient_id: '',
@@ -356,10 +357,29 @@ export default function App() {
     setDirty(false)
     setFormError('')
   }
-  function update(field, value) {
-    setDraft((current) => ({ ...current, [field]: value }))
-    setDirty(true)
-  }
+  const update = useCallback(
+    (field, value) => {
+      setDraft((current) => ({
+        ...current,
+        [field]: value,
+        ...(modal?.type === 'patient' &&
+        [
+          'condition',
+          'symptoms',
+          'medication',
+          'pain_management',
+          'underlying_conditions',
+          'history',
+          'age',
+          'goals',
+        ].includes(field)
+          ? { intake: { ...current.intake, summary: '' } }
+          : {}),
+      }))
+      setDirty(true)
+    },
+    [modal?.type],
+  )
   function openSettings() {
     setModal({ type: 'settings' })
     setDirty(false)
@@ -864,6 +884,7 @@ export default function App() {
         </div>
       )}
       <WorkspaceDialogs
+        onTemplateDirty={setDirty}
         markPaymentReceived={markPaymentReceived}
         rematchPatient={rematchPatient}
         deleteSession={(session) => deleteRecord('sessions', session)}

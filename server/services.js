@@ -2,13 +2,14 @@ import { createClient } from '@supabase/supabase-js'
 import { HttpError } from './errors.js'
 import { createCalendarService } from './google-calendar.js'
 import { matchAppointment, normalizeName } from './patient-matching.js'
+import { createIntakeService, summarizeIntake } from './intake.js'
 
 const patientColumns =
-  'id,owner_id,name,phone,referred_by,age,symptoms,assessment,pain_management,condition,underlying_conditions,medication,history,goals,archived,created_at,updated_at'
+  'id,owner_id,name,phone,referred_by,age,symptoms,assessment,pain_management,condition,underlying_conditions,medication,history,goals,intake,archived,created_at,updated_at'
 const migrationError = () =>
   new HttpError(
     503,
-    'Patient fields need the database update. Run 202611080001_patient_assessment.sql in Supabase SQL Editor, then retry.',
+    'Patient fields need the database update. Run 202611150001_patient_intake.sql in Supabase SQL Editor, then retry.',
   )
 
 async function readAll(db, table, column, ascending = true, secondary = 'id') {
@@ -34,6 +35,7 @@ export function createServices(config) {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   return {
+    intake: createIntakeService(),
     async verify(token) {
       const db = createClient(config.supabaseUrl, config.publishableKey, {
         global: { headers: { Authorization: `Bearer ${token}` } },
@@ -167,6 +169,12 @@ export function createServices(config) {
         return { patients, sessions, links }
       },
       async save({ db, id: owner }, table, record, id) {
+        if (table === 'patients' && record.intake && !record.intake.summary) {
+          record = {
+            ...record,
+            intake: { ...record.intake, summary: summarizeIntake(record.intake) },
+          }
+        }
         const query = id
           ? db.from(table).update(record).eq('id', id)
           : db.from(table).insert({ ...record, owner_id: owner })

@@ -352,6 +352,12 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.profile-clinical-summary > div:first-child dd {
+  font-size: 18px;
+  font-weight: 650;
+  color: #18332f;
+  line-height: 1.5;
+}
 @media (max-width: 600px) {
   .profile-clinical-summary {
     grid-template-columns: minmax(0, 1fr);

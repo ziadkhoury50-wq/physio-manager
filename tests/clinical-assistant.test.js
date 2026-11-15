@@ -204,3 +204,28 @@ test('literature outages are explicit and never produce citation links', async (
   assert.deepEqual(result.sources, [])
   assert.deepEqual(result.assessments[0].sourceIds, [])
 })
+
+test('intake summary uses reviewed case only and does not send questionnaire content to PubMed', async () => {
+  const calls = []
+  const assistant = createClinicalAssistant({
+    key: 'secret',
+    fetcher: async (url, options) => {
+      calls.push(url)
+      const body = JSON.parse(options.body)
+      assert.match(body.systemInstruction.parts[0].text, /Never treat unanswered items as negative/)
+      assert.match(body.systemInstruction.parts[0].text, /Do not infer a diagnosis/)
+      return Response.json({
+        candidates: [
+          {
+            finishReason: 'STOP',
+            content: { parts: [{ text: JSON.stringify({ ...output, assessments: [] }) }] },
+          },
+        ],
+      })
+    },
+  })
+  const result = await assistant({ ...input, mode: 'summary' })
+  assert.equal(calls.length, 1)
+  assert.ok(calls[0].includes('generativelanguage.googleapis.com'))
+  assert.deepEqual(result.sources, [])
+})

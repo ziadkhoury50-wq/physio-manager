@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { ZodError } from 'zod'
 import { HttpError } from './errors.js'
 import { clinicalInput } from './clinical-assistant.js'
+import { templateSchema } from './intake.js'
 import {
   eventQuerySchema,
   linkKeySchema,
@@ -97,6 +98,12 @@ export function createApp({
     }
   })
   app.get('/api/access', (_req, res) => res.json({ allowed: true }))
+  app.get('/api/intake-template', async (req, res) =>
+    res.json(await services.intake.get(req.doctor)),
+  )
+  app.put('/api/intake-template', async (req, res) =>
+    res.json(await services.intake.save(req.doctor, templateSchema.parse(req.body))),
+  )
   app.post(
     '/api/clinical-assistant',
     rateLimit({

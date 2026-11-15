@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { intakeSchema } from './intake.js'
 
 const text = z.string().trim().max(10000)
 const date = z
@@ -24,6 +25,7 @@ export const patientSchema = z
     history: text.optional(),
     goals: text.optional(),
     archived: z.boolean().optional(),
+    intake: intakeSchema.optional(),
   })
   .strict()
 export const sessionSchema = z

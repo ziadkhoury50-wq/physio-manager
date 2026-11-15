@@ -789,3 +789,68 @@ test('selects have white menus, separators, keyboard support, and work inside mo
   await chooseOption(page, 'Calendar to display', 'Test calendar')
   await noOverflow(page)
 })
+
+test('doctor templates persist and new patient answers and reviewed summary survive reload', async ({
+  page,
+}) => {
+  await page.route('**/api/clinical-assistant', async (route) => {
+    const body = route.request().postDataJSON()
+    expect(body.mode).toBe('summary')
+    expect(body.context).toContain('Night pain?: No')
+    expect(body.context).toContain('Pain score: 0')
+    expect(body.context).not.toContain('Intake Patient')
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        overview: 'Night pain denied; pain score reported as zero.',
+        safety: [],
+        uncertainties: ['Examination not documented.'],
+        questions: [],
+      }),
+    })
+  })
+  await page.goto('/')
+  await expect(page.locator('.page-heading')).toBeVisible()
+  if (await page.getByRole('button', { name: /Open settings/ }).isVisible())
+    await page.getByRole('button', { name: /Open settings/ }).click()
+  else await page.locator('.doctor-account').click()
+  await page.getByRole('button', { name: 'Add tab', exact: true }).click()
+  await page.getByLabel('Tab 1 name', { exact: true }).fill('Screening')
+  await page.getByRole('button', { name: 'Add question', exact: true }).click()
+  await page.getByLabel('Question 1', { exact: true }).fill('Night pain?')
+  await page.getByRole('button', { name: 'Add question', exact: true }).click()
+  await page.getByLabel('Question 2', { exact: true }).fill('Pain score')
+  await chooseOption(page, 'Answer type for question 2', 'Number')
+  await page.getByRole('button', { name: 'Save template', exact: true }).click()
+  await expect(page.getByText('Template saved for your practice.', { exact: true })).toBeVisible()
+  await noOverflow(page)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await tab(page, 'Patients')
+  await page.getByRole('button', { name: 'New patient', exact: true }).click()
+  await page.getByLabel('Full name *', { exact: true }).fill('Intake Patient')
+  await page.getByLabel('Diagnosis', { exact: true }).fill('Tennis elbow')
+  await page.getByRole('button', { name: 'Screening', exact: true }).click()
+  await chooseOption(page, 'Night pain?', 'No')
+  await page.getByLabel('Pain score', { exact: true }).fill('0')
+  await page.getByRole('button', { name: 'Prepare AI summary', exact: true }).click()
+  await page.getByRole('checkbox', { name: /I reviewed this text/ }).check()
+  await page.getByRole('button', { name: 'Generate draft', exact: true }).click()
+  await expect(page.getByLabel(/^AI draft/)).toHaveValue(/Night pain denied/)
+  await page.getByRole('button', { name: 'Use reviewed summary', exact: true }).click()
+  await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await expect(page.locator('.intake-saved-summary')).toContainText('Night pain denied')
+  await page.reload()
+  await expect(page.locator('.intake-saved-summary')).toContainText('Night pain denied')
+  await page.getByText('View assessment answers', { exact: true }).click()
+  await expect(page.locator('.intake-profile')).toContainText('No')
+  await expect(page.locator('.intake-profile')).toContainText('0')
+  await expect(page.locator('.profile-clinical-summary')).toContainText('Tennis elbow')
+  await noOverflow(page)
+  await page.getByRole('button', { name: 'Edit assessment', exact: true }).click()
+  await page.getByRole('button', { name: 'Screening', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: 'Night pain?', exact: true })).toContainText('No')
+  await chooseOption(page, 'Night pain?', 'Yes')
+  await expect(page.getByLabel('Summary for patient profile', { exact: true })).toHaveValue('')
+  await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await expect(page.locator('.intake-saved-summary')).toContainText('Night pain?: Yes')
+})

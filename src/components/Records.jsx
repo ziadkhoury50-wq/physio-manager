@@ -21,6 +21,7 @@ import { paymentLabel, paymentSummary, usd } from '../lib/revenue'
 import './PatientProfile.css'
 import SessionProgress, { ProgressMetrics } from './SessionProgress'
 import { patientProgress } from '../lib/patient-progress'
+import { IntakeProfile } from './PatientIntake'
 
 export function SessionCard({ session, patient, onClick }) {
   return (
@@ -313,6 +314,7 @@ export function PatientProfile({
           </div>
         </aside>
         <div className="profile-content">
+          <IntakeProfile patient={patient} onEdit={() => openPatient(patient)} />
           <ProgressMetrics sessions={records} />
           <div
             className="patient-profile-tabs"
