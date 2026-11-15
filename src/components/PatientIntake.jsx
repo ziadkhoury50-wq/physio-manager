@@ -581,7 +581,8 @@ export function IntakeSettings({ onDirty }) {
                 <li key={tab.id}>
                   <details>
                     <summary>
-                      {tab.title} ? {tab.questions.length} questions
+                      {tab.title} · {tab.questions.length} questions
+                      <ChevronDown className="disclosure-chevron" size={16} aria-hidden="true" />
                     </summary>
                     <ul>
                       {tab.questions.map((q) => (
@@ -967,8 +968,14 @@ export function IntakeProfile({ patient, onEdit }) {
         structured ? (
           <>
             {overview && (
-              <div className="intake-saved-summary intake-structured-summary">
-                <SummarySection section={overview} />
+              <div className="intake-saved-summary intake-overview">
+                <ul>
+                  {(overview.bullets || overview.text.split(/(?<=[.!])\s+(?=[A-Z0-9])/)).map(
+                    (point, index) => (
+                      <li key={index}>{point}</li>
+                    ),
+                  )}
+                </ul>
               </div>
             )}
             {details.length > 0 && (

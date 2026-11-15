@@ -478,19 +478,19 @@
   gap: 16px;
 }
 .intake-profile {
-  margin-bottom: 24px;
-  padding: 26px;
+  margin-bottom: 20px;
+  padding: 20px;
 }
 .intake-profile-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 .intake-profile-heading h2 {
-  font-size: 17px;
+  font-size: 15px;
 }
 .intake-profile .intake-saved-summary {
   white-space: pre-wrap;
@@ -559,7 +559,34 @@
   margin-left: auto;
 }
 .intake-profile .intake-answer-details {
-  margin-top: 18px;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.intake-profile .intake-overview {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  white-space: normal;
+}
+.intake-overview ul {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: grid;
+  gap: 5px;
+}
+.intake-overview li {
+  font-size: 12px;
+  line-height: 1.6;
+  padding-left: 2px;
+  color: #43594c;
+}
+.intake-profile .intake-full-summary {
+  margin-top: 8px;
+}
+.intake-profile-heading .button {
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 12px;
 }
 .intake-profile .intake-summary-legacy-preview {
   display: -webkit-box;
@@ -723,13 +750,16 @@
 }
 @media (max-width: 600px) {
   .intake-profile {
-    padding: 22px 18px;
+    padding: 16px;
   }
   .intake-profile .intake-saved-summary {
     padding: 16px;
   }
   .intake-profile .intake-summary-bullets {
     padding: 12px 18px 12px 32px;
+  }
+  .intake-profile .intake-overview {
+    padding: 0;
   }
   .patient-intake-form {
     padding: 20px 16px;

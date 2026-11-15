@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { Activity, ClipboardList, Plus } from 'lucide-react'
+import { Activity, ClipboardList, Plus, ChevronDown } from 'lucide-react'
 import { formatDate } from '../lib/dates'
 import { patientProgress } from '../lib/patient-progress'
 
@@ -171,6 +171,7 @@ export default function SessionProgress({ records, patient, openSession, viewSes
                     ? 'Pain not recorded'
                     : `Pain ${session.pain_score}/10`}
                 </span>
+                <ChevronDown className="disclosure-chevron" size={16} aria-hidden="true" />
               </summary>
               <div className="session-assessment-notes">
                 {[

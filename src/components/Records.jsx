@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronRight,
+  ChevronDown,
   ClipboardList,
   Plus,
   Search,
@@ -361,15 +362,18 @@ export function PatientProfile({
             hidden={profileTab !== 'assessment'}
             tabIndex={0}
           >
+            <IntakeProfile patient={patient} onEdit={() => openPatient(patient)} />
             <SessionProgress
               records={records}
               patient={patient}
               openSession={openSession}
               viewSession={viewSession}
             />
-            <IntakeProfile patient={patient} onEdit={() => openPatient(patient)} />
             <details className="patient-background">
-              <summary>Patient background</summary>
+              <summary>
+                Patient background{' '}
+                <ChevronDown className="disclosure-chevron" size={16} aria-hidden="true" />
+              </summary>
               <button
                 className="button secondary"
                 disabled={saving}

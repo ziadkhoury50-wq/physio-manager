@@ -880,7 +880,7 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByRole('tab', { name: 'Assessment & pain management' }).click()
   await expect(page.locator('.patient-progress-metrics')).toBeVisible()
   await expect(page.locator('.intake-saved-summary').first()).toContainText('Night pain denied')
-  await expect(page.locator('.intake-summary-section ul li')).toHaveCount(1)
+  await expect(page.locator('.intake-overview li')).toHaveCount(1)
   await expect(
     page.locator('.intake-summary-section').filter({ hasText: 'Concerns to review' }),
   ).toContainText('No concerns documented.')
