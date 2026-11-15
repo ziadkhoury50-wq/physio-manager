@@ -793,6 +793,7 @@ test('selects have white menus, separators, keyboard support, and work inside mo
 test('doctor templates persist and new patient answers and reviewed summary survive reload', async ({
   page,
 }) => {
+  test.setTimeout(60000)
   await page.route('**/api/clinical-assistant', async (route) => {
     const body = route.request().postDataJSON()
     expect(body.mode).toBe('summary')
@@ -816,6 +817,7 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByLabel('Tab 1 name', { exact: true }).fill('Screening')
   await page.getByRole('button', { name: 'Add question', exact: true }).click()
   await page.getByLabel('Question 1', { exact: true }).fill('Night pain?')
+  await page.getByRole('checkbox', { name: 'Required', exact: true }).first().check()
   await page.getByRole('tab', { name: 'Clinic preferences', exact: true }).click()
   await page.getByRole('tab', { name: 'Assessment templates', exact: true }).click()
   await expect(page.getByLabel('Question 1', { exact: true })).toHaveValue('Night pain?')
@@ -852,7 +854,7 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByLabel('Full name *', { exact: true }).fill('Intake Patient')
   await page.getByLabel('Diagnosis', { exact: true }).fill('Tennis elbow')
   await page.getByRole('button', { name: 'Screening', exact: true }).click()
-  await chooseOption(page, 'Night pain?', 'No')
+  await chooseOption(page, 'Night pain? *', 'No')
   await page.getByLabel('Pain score', { exact: true }).fill('0')
   await page.getByRole('button', { name: 'Prepare AI summary', exact: true }).click()
   await page.getByRole('checkbox', { name: /I reviewed this text/ }).check()
@@ -870,9 +872,24 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await noOverflow(page)
   await page.getByRole('button', { name: 'Edit assessment', exact: true }).click()
   await page.getByRole('button', { name: 'Screening', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'Night pain?', exact: true })).toContainText('No')
-  await chooseOption(page, 'Night pain?', 'Yes')
+  await expect(page.getByRole('combobox', { name: 'Night pain? *', exact: true })).toContainText(
+    'No',
+  )
+  await chooseOption(page, 'Night pain? *', 'Yes')
   await expect(page.getByLabel('Summary for patient profile', { exact: true })).toHaveValue('')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.locator('.intake-saved-summary')).toContainText('Night pain?: Yes')
+  const patientUrl = page.url()
+  await tab(page, 'Settings')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete Screening tab', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Screening', exact: true })).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Screening', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Mobility', exact: true })).toBeVisible()
+  await page.goto(patientUrl)
+  await page.getByText('View assessment answers', { exact: true }).click()
+  await expect(page.locator('.intake-profile')).toContainText('Night pain?')
+  await expect(page.locator('.intake-profile')).toContainText('Yes')
+  await noOverflow(page)
 })

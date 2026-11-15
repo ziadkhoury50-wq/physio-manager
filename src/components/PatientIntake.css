@@ -25,7 +25,7 @@
   overflow-wrap: anywhere;
 }
 .intake-table thead th {
-  background: #f6f8f7;
+  background: #fff;
   color: #64716a;
   font-size: 11px;
   font-weight: 500;
@@ -115,12 +115,88 @@
   align-items: flex-start;
   font-size: 12px;
   line-height: 1.7;
+  cursor: pointer;
+  min-height: 44px;
+  align-items: center;
 }
-.intake-required input {
-  width: 18px;
-  height: 18px;
+.intake-checkbox-control {
+  position: relative;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  margin: 2px 0;
+}
+.intake-checkbox-control input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid #b8c5be;
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.intake-checkbox-control input:checked {
+  background: #227d6f;
+  border-color: #227d6f;
+}
+.intake-checkbox-control input:focus-visible {
+  outline: 2px solid #227d6f;
+  outline-offset: 3px;
+}
+.intake-checkbox-control svg {
+  position: absolute;
+  left: 3.5px;
+  top: 3.5px;
+  color: #fff;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.7);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+.intake-checkbox-control input:checked + svg {
+  opacity: 1;
+  transform: scale(1);
+}
+.intake-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.intake-remove-question {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e1e7e3;
+  background: #fff;
+  color: #718078;
+  border-radius: 8px;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.intake-remove-question:hover {
+  color: #a74444;
+  background: #fff5f5;
+  border-color: #e8caca;
+}
+@media (prefers-reduced-motion: reduce) {
+  .intake-checkbox-control input,
+  .intake-checkbox-control svg,
+  .intake-remove-question {
+    transition: none;
+  }
 }
 .intake-tabs {
   display: flex;
@@ -174,9 +250,9 @@
 .patient-assessments-section {
   border: 1px solid #e1e7e3;
   border-radius: 12px;
-  background: #fbfcfb;
+  background: #fff;
   margin-top: 28px;
-  padding: 22px;
+  padding: 16px;
   min-width: 0;
 }
 .patient-assessments-heading h3 {
@@ -199,9 +275,25 @@
 }
 @media (max-width: 600px) {
   .patient-assessments-section {
-    padding: 16px 12px;
+    padding: 16px 0;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
     margin-top: 24px;
   }
+}
+.patient-intake-form .intake-patient-table th,
+.patient-intake-form .intake-patient-table td {
+  padding: 8px 10px;
+}
+.patient-intake-form .intake-patient-table .field input,
+.patient-intake-form .intake-patient-table .field textarea,
+.patient-intake-form .intake-patient-table .select-trigger {
+  padding: 8px 10px;
+  min-height: 44px;
+}
+.patient-intake-form .intake-patient-table .field textarea {
+  min-height: 70px;
 }
 .intake-answer-grid {
   display: grid;

@@ -15,6 +15,17 @@ import './PatientIntake.css'
 
 const empty = () => ({ tabs: [], answers: {}, summary: '' })
 const uid = () => crypto.randomUUID()
+function IntakeCheckbox({ checked, onChange, children }) {
+  return (
+    <label className="intake-required">
+      <span className="intake-checkbox-control">
+        <input type="checkbox" checked={checked} onChange={onChange} />
+        <Check size={13} strokeWidth={3} aria-hidden="true" />
+      </span>
+      <span>{children}</span>
+    </label>
+  )
+}
 const answerText = (value) =>
   value == null || value === ''
     ? 'Not answered'
@@ -156,6 +167,16 @@ export function IntakeSettings({ onDirty }) {
     const tab = { id: uid(), title: `Tab ${tabs.length + 1}`, questions: [] }
     if (await save([...tabs, tab])) setActiveId(tab.id)
   }
+  async function deleteTab(tab) {
+    if (
+      !window.confirm(
+        `Delete "${tab.title || 'Untitled tab'}" from your template? Existing patient assessments keep their saved questions and answers.`,
+      )
+    )
+      return
+    const next = tabs.filter((item) => item.id !== tab.id)
+    if (await save(next)) setActiveId(currentId === tab.id ? (next[0]?.id ?? null) : currentId)
+  }
   return (
     <section className="intake-settings settings-section">
       <h3>Patient assessment templates</h3>
@@ -233,14 +254,8 @@ export function IntakeSettings({ onDirty }) {
                   <button
                     type="button"
                     className="button secondary"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          'Remove this tab from the template? Saved patient answers will remain.',
-                        )
-                      )
-                        change(tabs.filter((t) => t.id !== tab.id))
-                    }}
+                    aria-label={`Delete ${tab.title || 'untitled'} tab`}
+                    onClick={() => deleteTab(tab)}
                   >
                     <Trash2 size={15} /> Remove tab
                   </button>
@@ -302,27 +317,29 @@ export function IntakeSettings({ onDirty }) {
                           )}
                         </td>
                         <td data-column="Settings">
-                          <label className="intake-required">
-                            <input
-                              type="checkbox"
+                          <div className="intake-row-actions">
+                            <IntakeCheckbox
                               checked={q.required}
                               onChange={(e) =>
                                 questionChange(tab, q.id, { required: e.target.checked })
                               }
-                            />{' '}
-                            Required answer
-                          </label>
-                          <button
-                            type="button"
-                            className="text-link"
-                            onClick={() =>
-                              tabChange(tab.id, {
-                                questions: tab.questions.filter((item) => item.id !== q.id),
-                              })
-                            }
-                          >
-                            <Trash2 size={14} /> Remove question
-                          </button>
+                            >
+                              Required
+                            </IntakeCheckbox>
+                            <button
+                              type="button"
+                              className="intake-remove-question"
+                              aria-label={`Remove question ${i + 1}`}
+                              title="Remove question"
+                              onClick={() =>
+                                tabChange(tab.id, {
+                                  questions: tab.questions.filter((item) => item.id !== q.id),
+                                })
+                              }
+                            >
+                              <Trash2 size={16} aria-hidden="true" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -655,14 +672,9 @@ function IntakeSummary({ draft, update }) {
               Shorten the context to 14,000 characters before generating.
             </p>
           )}
-          <label className="intake-required">
-            <input
-              type="checkbox"
-              checked={reviewed}
-              onChange={(e) => setReviewed(e.target.checked)}
-            />{' '}
+          <IntakeCheckbox checked={reviewed} onChange={(e) => setReviewed(e.target.checked)}>
             I reviewed this text and removed identifying information.
-          </label>
+          </IntakeCheckbox>
           <button
             type="button"
             className="button secondary"
