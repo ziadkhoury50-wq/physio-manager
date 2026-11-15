@@ -1,7 +1,7 @@
 import { fixtureData } from './workspace.js'
 import { testSession } from './session.js'
 import { randomUUID } from 'node:crypto'
-import { summarizeIntake } from '../../server/intake.js'
+import { summarizeIntake, templateFileSchema } from '../../server/intake.js'
 
 // These fixtures intercept browser requests only. Nothing is written to Supabase.
 export async function mockWorkspace(page) {
@@ -26,7 +26,16 @@ export async function mockWorkspace(page) {
     if (body?.intake && !body.intake.summary) body.intake.summary = summarizeIntake(body.intake)
     let result
     if (path === '/api/access') result = { allowed: true }
-    else if (path === '/api/intake-template') {
+    else if (path === '/api/intake-template/preview') {
+      const parsed = templateFileSchema.safeParse(body)
+      if (!parsed.success)
+        return route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'This is not a supported assessment template file.' }),
+        })
+      result = { tabs: parsed.data.tabs }
+    } else if (path === '/api/intake-template') {
       if (method === 'PUT') template = { ...body, updated_at: new Date().toISOString() }
       result = template
     } else if (path === '/api/records')

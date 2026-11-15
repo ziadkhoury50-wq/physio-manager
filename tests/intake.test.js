@@ -2,7 +2,19 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile, readdir } from 'node:fs/promises'
 import { PGlite } from '@electric-sql/pglite'
-import { intakeSchema, templateSchema, summarizeIntake } from '../server/intake.js'
+import {
+  intakeSchema,
+  templateSchema,
+  summarizeIntake,
+  templateFileSchema,
+} from '../server/intake.js'
+import {
+  templateFile,
+  importTabs,
+  parseTemplateJson,
+  exampleTemplate,
+  templateAuthoringPrompt,
+} from '../src/lib/template-transfer.js'
 
 const tabs = [
   {
@@ -15,6 +27,26 @@ const tabs = [
     ],
   },
 ]
+test('template transfer validates file versions and excludes patient data; appending regenerates identifiers', () => {
+  const file = templateFile(tabs)
+  assert.deepEqual(templateFileSchema.parse(file).tabs, tabs)
+  for (const invalid of [
+    { ...file, version: 2 },
+    { ...file, answers: { pain: true } },
+    { ...file, patients: [] },
+    { ...file, tabs: [{ ...tabs[0], questions: [{ ...tabs[0].questions[0], type: 'unknown' }] }] },
+  ])
+    assert.equal(templateFileSchema.safeParse(invalid).success, false)
+  let n = 0
+  const appended = importTabs(tabs, tabs, 'append', () => `new-${++n}`)
+  assert.equal(appended.length, 2)
+  assert.notEqual(appended[0].id, appended[1].id)
+  assert.notEqual(appended[0].questions[0].id, appended[1].questions[0].id)
+  assert.equal(templateSchema.safeParse({ tabs: appended }).success, true)
+  assert.equal(importTabs(tabs, tabs, 'replace', () => `new-${++n}`).length, 1)
+  assert.equal(tabs[0].id, 'screen')
+  assert.throws(() => importTabs(Array(10).fill(tabs[0]), tabs, 'append'), /exceeds/)
+})
 test('intake validates answer types, required answers, choices and stable unique question IDs', () => {
   const record = { tabs, answers: { pain: false, score: 0 }, summary: 'Reviewed summary' }
   assert.equal(intakeSchema.parse(record).answers.pain, false)
@@ -74,4 +106,36 @@ test('doctor templates are private and patient question snapshots survive templa
   } finally {
     await db.close()
   }
+})
+
+test('authoring example and fenced JSON import are valid, and question counts are uncapped', () => {
+  assert.equal(templateFileSchema.safeParse(exampleTemplate).success, true)
+  assert.deepEqual(
+    parseTemplateJson('```json\n' + JSON.stringify(exampleTemplate) + '\n```'),
+    exampleTemplate,
+  )
+  assert.match(templateAuthoringPrompt, /physiomanager-assessment-tabs/)
+  assert.throws(() => parseTemplateJson('broken'), /not valid JSON/)
+  assert.throws(() => parseTemplateJson('x'.repeat(80001)), /80 KB/)
+  const many = [
+    {
+      id: 'many',
+      title: 'Many questions',
+      questions: Array.from({ length: 75 }, (_, i) => ({
+        id: `q-${i}`,
+        label: `Question ${i}`,
+        type: 'text',
+        required: false,
+        options: [],
+      })),
+    },
+  ]
+  assert.equal(templateSchema.safeParse({ tabs: many }).success, true)
+  assert.equal(importTabs([], many, 'append').length, 1)
+  const answers = Object.fromEntries(
+    many[0].questions.map((q) => [q.id, 'Long answer '.repeat(50)]),
+  )
+  const summary = summarizeIntake({ tabs: many, answers, summary: '' })
+  assert.ok(summary.length <= 10000)
+  assert.match(summary, /Overview shortened/)
 })

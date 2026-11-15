@@ -4,14 +4,23 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
+  Download,
   ClipboardList,
   LoaderCircle,
   Plus,
   Trash2,
+  Upload,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { Field } from './UI'
 import Select from './Select'
+import {
+  templateFile,
+  importTabs,
+  parseTemplateJson,
+  exampleTemplate,
+  templateAuthoringPrompt,
+} from '../lib/template-transfer'
 import './PatientIntake.css'
 
 const empty = () => ({ tabs: [], answers: {}, summary: '' })
@@ -43,13 +52,14 @@ function intakeContext(patient) {
     patient.medication && `Medication: ${patient.medication}`,
     patient.age != null && patient.age !== '' && `Age: ${patient.age}`,
     patient.underlying_conditions && `Relevant history: ${patient.underlying_conditions}`,
-    patient.history && `Underlying conditions: ${patient.history}`,
     patient.goals && `Treatment goals: ${patient.goals}`,
-    patient.pain_management && `Pain management: ${patient.pain_management}`,
-    ...data.tabs.flatMap((tab) => [
-      tab.title,
-      ...tab.questions.map((q) => `${q.label}: ${answerText(data.answers[q.id])}`),
-    ]),
+    patient.pain_management && `Pain management plan: ${patient.pain_management}`,
+    ...data.tabs
+      .filter((tab) => tab.questions.length > 0)
+      .flatMap((tab) => [
+        tab.title,
+        ...tab.questions.map((q) => `${q.label}: ${answerText(data.answers[q.id])}`),
+      ]),
   ]
     .filter(Boolean)
     .join('\n')
@@ -63,6 +73,11 @@ export function IntakeSettings({ onDirty }) {
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [activeId, setActiveId] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [importMode, setImportMode] = useState('append')
+  const [transferNotice, setTransferNotice] = useState('')
+  const fileInput = useRef(null)
+  const [pastedJson, setPastedJson] = useState('')
   const tabBar = useRef(null)
   const currentId = tabs.some((tab) => tab.id === activeId) ? activeId : tabs[0]?.id
   useEffect(() => {
@@ -177,6 +192,116 @@ export function IntakeSettings({ onDirty }) {
       return
     const next = tabs.filter((item) => item.id !== tab.id)
     if (await save(next)) setActiveId(currentId === tab.id ? (next[0]?.id ?? null) : currentId)
+  }
+  async function exportTemplate() {
+    setBusy(true)
+    setError('')
+    setTransferNotice('')
+    try {
+      const data = await api('/intake-template/preview', {
+        method: 'POST',
+        body: templateFile(tabs),
+      })
+      const blob = new Blob([JSON.stringify(templateFile(data.tabs), null, 2)], {
+        type: 'application/json',
+      })
+      if (blob.size > 80000)
+        throw new Error('The export is too large to import. Reduce the template to below 80 KB.')
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'physiomanager-assessment-tabs.json'
+      document.body.append(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setTransferNotice('Tabs exported. The file includes question definitions only.')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function readTemplate(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setBusy(true)
+    setError('')
+    setPreview(null)
+    setTransferNotice('')
+    try {
+      if (file.size > 80000) throw new Error('Choose a template JSON file smaller than 80 KB.')
+      const document = parseTemplateJson(await file.text())
+      const data = await api('/intake-template/preview', { method: 'POST', body: document })
+      if (!data.tabs.length) throw new Error('This file has no tabs to import.')
+      setPreview(data.tabs)
+      setImportMode('append')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function previewPasted() {
+    setBusy(true)
+    setError('')
+    setPreview(null)
+    setTransferNotice('')
+    try {
+      const data = await api('/intake-template/preview', {
+        method: 'POST',
+        body: parseTemplateJson(pastedJson),
+      })
+      if (!data.tabs.length) throw new Error('The JSON has no tabs to import.')
+      setPreview(data.tabs)
+      setImportMode('append')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(templateAuthoringPrompt)
+      setTransferNotice(
+        'Prompt copied. Paste it into ChatGPT and replace the final line with your requirements.',
+      )
+    } catch {
+      setTransferNotice('Select and copy the prompt from the field below.')
+    }
+  }
+  function downloadExample() {
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(exampleTemplate, null, 2)], { type: 'application/json' }),
+    )
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'physiomanager-template-example.json'
+    document.body.append(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+  async function applyImport() {
+    if (
+      importMode === 'replace' &&
+      !window.confirm(
+        'Replace all current template tabs, including unsaved edits? Saved patient assessments will stay unchanged.',
+      )
+    )
+      return
+    try {
+      const next = importTabs(tabs, preview, importMode)
+      if (await save(next)) {
+        setActiveId(next[importMode === 'append' ? tabs.length : 0]?.id ?? null)
+        setPreview(null)
+        setTransferNotice('Assessment tabs imported and saved for your practice.')
+      }
+    } catch (e) {
+      setError(e.message)
+    }
   }
   return (
     <section className="intake-settings settings-section">
@@ -349,10 +474,6 @@ export function IntakeSettings({ onDirty }) {
                 <button
                   type="button"
                   className="button secondary"
-                  disabled={
-                    tab.questions.length >= 10 ||
-                    tabs.reduce((n, t) => n + t.questions.length, 0) >= 40
-                  }
                   onClick={() =>
                     tabChange(tab.id, {
                       questions: [
@@ -371,10 +492,107 @@ export function IntakeSettings({ onDirty }) {
           <button type="button" className="button primary" disabled={!dirty} onClick={() => save()}>
             <Check size={15} /> Save template
           </button>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!tabs.length}
+            onClick={exportTemplate}
+          >
+            <Download size={15} /> Export tabs
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => fileInput.current?.click()}
+          >
+            <Upload size={15} /> Import tabs
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            hidden
+            aria-label="Import assessment template file"
+            onChange={readTemplate}
+          />
         </div>
+        <details className="intake-ai-options intake-template-helper">
+          <summary>
+            Create tabs with ChatGPT <ChevronDown size={16} aria-hidden="true" />
+          </summary>
+          <p>
+            Copy the prompt into ChatGPT and describe the tabs you want. Paste its JSON response
+            below, preview the questions, then import. No patient information is needed.
+          </p>
+          <div className="intake-actions">
+            <button type="button" className="button secondary" onClick={copyPrompt}>
+              Copy ChatGPT prompt
+            </button>
+            <button type="button" className="button secondary" onClick={downloadExample}>
+              <Download size={15} /> Download example JSON
+            </button>
+          </div>
+          <Field label="Prompt for ChatGPT">
+            <textarea
+              readOnly
+              rows={7}
+              value={templateAuthoringPrompt}
+              onFocus={(event) => event.target.select()}
+            />
+          </Field>
+          <Field label="Paste template JSON">
+            <textarea
+              rows={7}
+              maxLength={80000}
+              value={pastedJson}
+              onChange={(event) => setPastedJson(event.target.value)}
+              placeholder="Paste the JSON response from ChatGPT"
+            />
+          </Field>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!pastedJson.trim()}
+            onClick={previewPasted}
+          >
+            Preview pasted tabs
+          </button>
+        </details>
+        {preview && (
+          <section className="intake-import-preview" aria-label="Import preview">
+            <h4>Import preview</h4>
+            <p>
+              {preview.length} tabs · {preview.reduce((n, tab) => n + tab.questions.length, 0)}{' '}
+              questions
+            </p>
+            <ul>
+              {preview.map((tab) => (
+                <li key={tab.id}>
+                  {tab.title} — {tab.questions.length} questions
+                </li>
+              ))}
+            </ul>
+            <Field label="How to import">
+              <Select value={importMode} onChange={(e) => setImportMode(e.target.value)}>
+                <option value="append">Add to existing tabs</option>
+                <option value="replace">Replace existing tabs</option>
+              </Select>
+            </Field>
+            <p>Patient records and previously saved assessments are preserved.</p>
+            <div className="intake-actions">
+              <button type="button" className="button primary" onClick={applyImport}>
+                <Check size={15} /> Import and save
+              </button>
+              <button type="button" className="button secondary" onClick={() => setPreview(null)}>
+                Cancel import
+              </button>
+            </div>
+          </section>
+        )}
       </fieldset>
       {dirty && <p role="status">Template changes are not saved yet.</p>}
       {saved && <p role="status">Template saved for your practice.</p>}
+      {transferNotice && <p role="status">{transferNotice}</p>}
     </section>
   )
 }
@@ -386,9 +604,10 @@ export function PatientIntakeForm({ draft, update, children }) {
   const [ready, setReady] = useState(Boolean(draft.id))
   const container = useRef(null)
   const intake = draft.intake || empty()
-  const activeAssessment = intake.tabs.some((tab) => tab.id === active)
+  const assessmentTabs = intake.tabs.filter((tab) => tab.questions.length > 0)
+  const activeAssessment = assessmentTabs.some((tab) => tab.id === active)
     ? active
-    : intake.tabs[0]?.id
+    : assessmentTabs[0]?.id
   useEffect(() => {
     const form = container.current?.closest('form')
     const guard = (event) => {
@@ -426,7 +645,7 @@ export function PatientIntakeForm({ draft, update, children }) {
   }
   async function latest() {
     if (
-      intake.tabs.length &&
+      assessmentTabs.length &&
       !window.confirm(
         'Use the latest template? Matching questions keep their answers; the existing summary will be cleared.',
       )
@@ -464,7 +683,6 @@ export function PatientIntakeForm({ draft, update, children }) {
           {error}
         </p>
       )}
-      {loading && <p role="status">Loading assessment template…</p>}
       <section className="patient-details-section" aria-labelledby="patient-details-title">
         <h2 id="patient-details-title">Patient details</h2>
         <div className="patient-core-details">{children}</div>
@@ -476,12 +694,23 @@ export function PatientIntakeForm({ draft, update, children }) {
             <h3 id="patient-assessments-title">Assessments</h3>
             <p>Questionnaires for this patient, using your practice's assessment templates.</p>
           </div>
-          {intake.tabs.length > 0 && (
+          {loading && (
+            <div className="intake-loading" role="status" aria-label="Loading assessment questions">
+              <div className="intake-loading-label">
+                <LoaderCircle size={17} className="spin" aria-hidden="true" />
+                <span>Getting questions ready</span>
+              </div>
+              <div className="intake-skeleton-row" aria-hidden="true" />
+              <div className="intake-skeleton-row" aria-hidden="true" />
+              <div className="intake-skeleton-row" aria-hidden="true" />
+            </div>
+          )}
+          {assessmentTabs.length > 0 && (
             <div
               className="intake-tabs patient-assessment-tabs"
               aria-label="Patient assessment tabs"
             >
-              {intake.tabs.map((tab) => (
+              {assessmentTabs.map((tab) => (
                 <button
                   type="button"
                   key={tab.id}
@@ -494,7 +723,7 @@ export function PatientIntakeForm({ draft, update, children }) {
               ))}
             </div>
           )}
-          {intake.tabs.map((tab) => (
+          {assessmentTabs.map((tab) => (
             <section
               key={tab.id}
               hidden={activeAssessment !== tab.id}
@@ -575,16 +804,27 @@ export function PatientIntakeForm({ draft, update, children }) {
               </table>
             </section>
           ))}
-          {(error || (draft.id && intake.tabs.length === 0)) && (
+          {(error || (draft.id && assessmentTabs.length === 0)) && (
             <div className="intake-actions">
               <button className="text-link" type="button" disabled={loading} onClick={latest}>
                 {error ? 'Retry loading questions' : 'Add assessment questions'}
               </button>
             </div>
           )}
-          {intake.tabs.length > 0 && (
+          {assessmentTabs.length > 0 && (
             <IntakeSummary key={intakeContext(draft)} draft={draft} update={update} />
           )}
+        </section>
+        <section className="patient-goals-section">
+          <Field label="Treatment goals">
+            <textarea
+              rows={3}
+              maxLength={10000}
+              value={draft.goals || ''}
+              onChange={(event) => update('goals', event.target.value)}
+              placeholder="What would the patient like to get back to?"
+            />
+          </Field>
         </section>
       </section>
     </div>
@@ -726,7 +966,7 @@ function IntakeSummary({ draft, update }) {
 
 export function IntakeProfile({ patient, onEdit }) {
   const intake = patient.intake
-  if (!intake?.tabs?.length) return null
+  if (!intake?.tabs?.some((tab) => tab.questions.length > 0)) return null
   return (
     <section className="panel intake-profile">
       <div className="intake-profile-heading">
@@ -744,27 +984,29 @@ export function IntakeProfile({ patient, onEdit }) {
       )}
       <details>
         <summary>View assessment answers</summary>
-        {intake.tabs.map((tab) => (
-          <section key={tab.id}>
-            <h3>{tab.title}</h3>
-            <table className="intake-table intake-patient-table">
-              <thead>
-                <tr>
-                  <th scope="col">Question</th>
-                  <th scope="col">Answer</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tab.questions.map((q) => (
-                  <tr key={q.id}>
-                    <th scope="row">{q.label}</th>
-                    <td>{answerText(intake.answers[q.id])}</td>
+        {intake.tabs
+          .filter((tab) => tab.questions.length > 0)
+          .map((tab) => (
+            <section key={tab.id}>
+              <h3>{tab.title}</h3>
+              <table className="intake-table intake-patient-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Question</th>
+                    <th scope="col">Answer</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        ))}
+                </thead>
+                <tbody>
+                  {tab.questions.map((q) => (
+                    <tr key={q.id}>
+                      <th scope="row">{q.label}</th>
+                      <td>{answerText(intake.answers[q.id])}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
       </details>
     </section>
   )

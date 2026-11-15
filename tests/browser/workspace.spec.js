@@ -526,12 +526,9 @@ test('create, edit, archive, and restore a patient without losing history', asyn
   await page.getByLabel('Full name *', { exact: true }).fill('Maya Test')
   await expect(page.getByLabel('Email address', { exact: true })).toHaveCount(0)
   await page.getByLabel('Referred by', { exact: true }).fill('Dr. Referral')
-  await page
-    .getByLabel('Underlying conditions', { exact: true })
-    .fill('Recorded underlying condition')
   await page.getByLabel('Medication', { exact: true }).fill('Recorded medication')
   await page.getByLabel('Diagnosis', { exact: true }).fill('Ankle rehabilitation')
-  await page.getByLabel('Pain management', { exact: true }).fill('Pacing and gentle mobility.')
+  await page.getByLabel('Pain management plan', { exact: true }).fill('Pacing and gentle mobility.')
   await page
     .getByLabel('Relevant history', { exact: true })
     .fill('Returning after an ankle injury.')
@@ -545,7 +542,6 @@ test('create, edit, archive, and restore a patient without losing history', asyn
   await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Returning after an ankle injury.', { exact: true })).toBeVisible()
   await expect(page.getByText('Dr. Referral', { exact: true })).toBeVisible()
-  await expect(page.getByText('Recorded underlying condition', { exact: true })).toBeVisible()
   await expect(page.getByText('Recorded medication', { exact: true })).toBeVisible()
   await noOverflow(page)
   await page.getByRole('button', { name: 'Edit patient', exact: true }).click()
@@ -891,5 +887,104 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByText('View assessment answers', { exact: true }).click()
   await expect(page.locator('.intake-profile')).toContainText('Night pain?')
   await expect(page.locator('.intake-profile')).toContainText('Yes')
+  await noOverflow(page)
+})
+
+test('template JSON exports and imports safely, empty tabs stay hidden, and questions load with a skeleton', async ({
+  page,
+}) => {
+  test.setTimeout(60000)
+  const { readFile } = await import('node:fs/promises')
+  const file = {
+    format: 'physiomanager-assessment-tabs',
+    version: 1,
+    tabs: [
+      {
+        id: 'screen',
+        title: 'Imported screen',
+        questions: [
+          { id: 'pain', label: 'Night pain?', type: 'boolean', required: false, options: [] },
+        ],
+      },
+      { id: 'empty', title: 'Empty tab', questions: [] },
+    ],
+  }
+  await page.goto('/#/settings')
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible()
+  const upload = page.getByLabel('Import assessment template file', { exact: true })
+  await upload.setInputFiles({
+    name: 'bad.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('invalid json'),
+  })
+  await expect(page.getByRole('alert')).toContainText('not valid JSON')
+  await upload.setInputFiles({
+    name: 'tabs.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(file)),
+  })
+  await expect(page.getByRole('region', { name: 'Import preview' })).toContainText('2 tabs')
+  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Import and save', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toBeVisible()
+  const downloadEvent = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export tabs', exact: true }).click()
+  const downloaded = await downloadEvent
+  const exported = JSON.parse(await readFile(await downloaded.path(), 'utf8'))
+  expect(exported.format).toBe(file.format)
+  expect(exported.tabs).toHaveLength(2)
+  expect(exported.answers).toBeUndefined()
+  expect(exported.tabs[0].questions[0].label).toBe('Night pain?')
+  expect(exported.tabs[0].id).not.toBe('screen')
+  await page.locator('.intake-template-helper > summary').click()
+  await expect(page.getByLabel('Prompt for ChatGPT', { exact: true })).toHaveValue(
+    /physiomanager-assessment-tabs/,
+  )
+  await page
+    .getByLabel('Paste template JSON', { exact: true })
+    .fill('```json\n' + JSON.stringify(exported) + '\n```')
+  await page.getByRole('button', { name: 'Preview pasted tabs', exact: true }).click()
+  await page.getByRole('button', { name: 'Import and save', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toHaveCount(2)
+  await upload.setInputFiles({
+    name: 'tabs.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(exported)),
+  })
+  await chooseOption(page, 'How to import', 'Replace existing tabs')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Import and save', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toHaveCount(1)
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toBeVisible()
+  await noOverflow(page)
+  await tab(page, 'Patients')
+  await page.route('**/api/intake-template', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'New patient', exact: true }).click()
+  await expect(
+    page.getByRole('status', { name: 'Loading assessment questions', exact: true }),
+  ).toBeVisible()
+  await page.getByLabel('Full name *', { exact: true }).fill('Imported patient')
+  const dialogBox = await page.getByRole('dialog').boundingBox()
+  expect(dialogBox.width).toBeCloseTo(page.viewportSize().width, 0)
+  expect(dialogBox.height).toBeCloseTo(page.viewportSize().height, 0)
+  await expect(page.getByLabel('Underlying conditions', { exact: true })).toHaveCount(0)
+  await expect(page.getByLabel('Pain management plan', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Empty tab', exact: true })).toHaveCount(0)
+  await chooseOption(page, 'Night pain?', 'No')
+  const goals = await page.getByLabel('Treatment goals', { exact: true }).boundingBox()
+  const assessments = await page.locator('.patient-assessments-section').boundingBox()
+  expect(goals.y).toBeGreaterThan(assessments.y + assessments.height)
+  await page.getByLabel('Treatment goals', { exact: true }).fill('Return to daily activities.')
+  await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await page.getByText('View assessment answers', { exact: true }).click()
+  await expect(page.locator('.intake-profile')).toContainText('Night pain?')
+  await expect(
+    page.locator('.intake-profile').getByRole('heading', { name: 'Empty tab', exact: true }),
+  ).toHaveCount(0)
   await noOverflow(page)
 })

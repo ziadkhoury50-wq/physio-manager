@@ -5,7 +5,6 @@ import {
   ArrowRight,
   ChevronRight,
   ClipboardList,
-  FileText,
   Plus,
   Search,
   ShieldCheck,
@@ -200,7 +199,7 @@ export function PatientProfile({
               <dd>{patient.condition || 'Not recorded'}</dd>
             </div>
             <div>
-              <dt>Pain management</dt>
+              <dt>Pain management plan</dt>
               <dd>{patient.pain_management || 'Not recorded'}</dd>
             </div>
           </dl>
@@ -388,7 +387,7 @@ export function PatientProfile({
                     'No previous patient-level assessment.',
                   ],
                   [
-                    'Pain management',
+                    'Pain management plan',
                     patient.pain_management,
                     'No pain management plan recorded yet.',
                   ],
@@ -414,13 +413,6 @@ export function PatientProfile({
                   </span>
                   <h3>Medication</h3>
                   <p>{patient.medication || 'No medication recorded.'}</p>
-                </section>
-                <section className="panel">
-                  <span className="note-icon">
-                    <FileText size={18} />
-                  </span>
-                  <h3>Underlying conditions</h3>
-                  <p>{patient.history || 'No underlying conditions recorded.'}</p>
                 </section>
                 <section className="panel">
                   <span className="note-icon">

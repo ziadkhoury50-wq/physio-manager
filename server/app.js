@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { ZodError } from 'zod'
 import { HttpError } from './errors.js'
 import { clinicalInput } from './clinical-assistant.js'
-import { templateSchema } from './intake.js'
+import { templateSchema, templateFileSchema } from './intake.js'
 import {
   eventQuerySchema,
   linkKeySchema,
@@ -101,6 +101,15 @@ export function createApp({
   app.get('/api/intake-template', async (req, res) =>
     res.json(await services.intake.get(req.doctor)),
   )
+  app.post('/api/intake-template/preview', async (req, res) => {
+    const document = templateFileSchema.safeParse(req.body)
+    if (!document.success)
+      throw new HttpError(
+        400,
+        'This is not a supported assessment template file. Check its version, tab names, question types and choices.',
+      )
+    res.json({ tabs: document.data.tabs })
+  })
   app.put('/api/intake-template', async (req, res) =>
     res.json(await services.intake.save(req.doctor, templateSchema.parse(req.body))),
   )

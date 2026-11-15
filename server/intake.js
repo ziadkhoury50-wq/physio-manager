@@ -23,15 +23,15 @@ export const intakeTabs = z
       .object({
         id,
         title: z.string().trim().min(1).max(80),
-        questions: z.array(question).max(10),
+        questions: z.array(question),
       })
       .strict(),
   )
   .max(10)
   .superRefine((tabs, ctx) => {
     const ids = tabs.flatMap((t) => [t.id, ...t.questions.map((q) => q.id)])
-    if (new Set(ids).size !== ids.length || tabs.reduce((n, t) => n + t.questions.length, 0) > 40)
-      ctx.addIssue({ code: 'custom', message: 'Use unique IDs and at most 40 questions.' })
+    if (new Set(ids).size !== ids.length)
+      ctx.addIssue({ code: 'custom', message: 'Use unique IDs for all tabs and questions.' })
   })
 export const intakeSchema = z
   .object({
@@ -63,6 +63,12 @@ export const intakeSchema = z
     }
   })
 export const templateSchema = z.object({ tabs: intakeTabs }).strict()
+export const templateFileSchema = templateSchema
+  .extend({
+    format: z.literal('physiomanager-assessment-tabs'),
+    version: z.literal(1),
+  })
+  .strict()
 
 export function summarizeIntake(intake) {
   if (
@@ -72,24 +78,33 @@ export function summarizeIntake(intake) {
   )
     return ''
   const brief = (value, max) => (value.length > max ? `${value.slice(0, max)}…` : value)
-  return [
+  const lines = [
     'Answer overview — full answers are available below.',
-    ...intake.tabs.flatMap((tab) => [
-      tab.title,
-      ...tab.questions.map((q) => {
-        const a = intake.answers[q.id]
-        const value =
-          a == null || a === ''
-            ? 'Not answered'
-            : a === true
-              ? 'Yes'
-              : a === false
-                ? 'No'
-                : String(a)
-        return `${brief(q.label, 80)}: ${brief(value, 120)}`
-      }),
-    ]),
-  ].join('\n')
+    ...intake.tabs
+      .filter((tab) => tab.questions.length > 0)
+      .flatMap((tab) => [
+        tab.title,
+        ...tab.questions.map((q) => {
+          const a = intake.answers[q.id]
+          const value =
+            a == null || a === ''
+              ? 'Not answered'
+              : a === true
+                ? 'Yes'
+                : a === false
+                  ? 'No'
+                  : String(a)
+          return `${brief(q.label, 80)}: ${brief(value, 120)}`
+        }),
+      ]),
+  ]
+  let overview = ''
+  for (const line of lines) {
+    if (overview.length + line.length + 1 > 9000)
+      return `${overview}\n\nOverview shortened. View the full assessment answers for the remaining questions.`
+    overview += `${overview ? '\n' : ''}${line}`
+  }
+  return overview
 }
 
 export function createIntakeService() {
@@ -112,6 +127,11 @@ export function createIntakeService() {
         .upsert({ owner_id: owner, tabs: record.tabs })
         .select('tabs,updated_at')
         .single()
+      if (error?.code === '23514')
+        throw new HttpError(
+          400,
+          'This template exceeds the storage-size limit. Shorten question or choice text and try again.',
+        )
       if (error)
         throw new HttpError(
           503,
