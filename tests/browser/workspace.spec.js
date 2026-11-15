@@ -240,7 +240,9 @@ test('patient age and background symptoms persist with accessible equal profile 
   await page.getByLabel('Full name *', { exact: true }).fill('Assessment Test Patient')
   await page.getByLabel('Age', { exact: true }).fill('34')
   await page.getByLabel('Symptoms', { exact: true }).fill('Discomfort on reaching overhead.')
-  await page.getByLabel('Imaging findings', { exact: true }).fill('MRI report reviewed and recorded.')
+  await page
+    .getByLabel('Imaging findings', { exact: true })
+    .fill('MRI report reviewed and recorded.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.getByText('34 years', { exact: true })).toBeVisible()
   const historyTab = page.getByRole('tab', { name: 'Session history', exact: true })
@@ -975,7 +977,10 @@ test('template JSON exports and imports safely, empty tabs stay hidden, and ques
     .fill('```json\n' + JSON.stringify(exported) + '\n```')
   await page.getByRole('button', { name: 'Preview tabs', exact: true }).click()
   await page.getByRole('button', { name: 'Use these tabs', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toHaveCount(2)
+  await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toHaveCount(1)
+  await expect(
+    page.getByRole('status').filter({ hasText: 'These tabs and questions already exist' }),
+  ).toBeVisible()
   await upload.setInputFiles({
     name: 'tabs.json',
     mimeType: 'application/json',

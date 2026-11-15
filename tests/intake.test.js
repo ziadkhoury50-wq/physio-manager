@@ -14,6 +14,7 @@ import {
   parseTemplateJson,
   exampleTemplate,
   templateAuthoringPrompt,
+  templateInstructions,
 } from '../src/lib/template-transfer.js'
 
 const tabs = [
@@ -39,13 +40,55 @@ test('template transfer validates file versions and excludes patient data; appen
     assert.equal(templateFileSchema.safeParse(invalid).success, false)
   let n = 0
   const appended = importTabs(tabs, tabs, 'append', () => `new-${++n}`)
-  assert.equal(appended.length, 2)
-  assert.notEqual(appended[0].id, appended[1].id)
-  assert.notEqual(appended[0].questions[0].id, appended[1].questions[0].id)
+  assert.deepEqual(appended, tabs)
+  const additions = [
+    {
+      ...tabs[0],
+      title: ' SCREENING! ',
+      questions: [
+        { ...tabs[0].questions[0], label: 'night pain' },
+        { id: 'new', label: 'Onset', type: 'text', required: false, options: [] },
+      ],
+    },
+  ]
+  const merged = importTabs(tabs, additions, 'append', () => `new-${++n}`)
+  assert.equal(merged.length, 1)
+  assert.equal(merged[0].questions.length, 4)
+  assert.equal(merged[0].questions[0].id, 'pain')
+  assert.deepEqual(importTabs(merged, additions, 'append'), merged)
+  assert.equal(importTabs([], [...tabs, ...tabs], 'replace').length, 1)
+  assert.throws(
+    () =>
+      importTabs(
+        tabs,
+        [{ ...tabs[0], questions: [{ ...tabs[0].questions[0], type: 'text' }] }],
+        'append',
+      ),
+    /different answer type/,
+  )
+  assert.throws(
+    () =>
+      importTabs(
+        tabs,
+        [{ ...tabs[0], questions: [{ ...tabs[0].questions[2], options: ['Left', 'Both'] }] }],
+        'append',
+      ),
+    /different answer type/,
+  )
+  assert.match(templateInstructions(tabs), /Existing blank template/)
+  assert.match(templateInstructions(tabs), /Night pain/)
   assert.equal(templateSchema.safeParse({ tabs: appended }).success, true)
   assert.equal(importTabs(tabs, tabs, 'replace', () => `new-${++n}`).length, 1)
   assert.equal(tabs[0].id, 'screen')
-  assert.throws(() => importTabs(Array(10).fill(tabs[0]), tabs, 'append'), /exceeds/)
+  assert.throws(
+    () =>
+      importTabs(
+        Array.from({ length: 10 }, (_, i) => ({ ...tabs[0], title: `Tab ${i}` })),
+        tabs,
+        'append',
+      ),
+    /exceeds/,
+  )
 })
 test('intake validates answer types, required answers, choices and stable unique question IDs', () => {
   const record = { tabs, answers: { pain: false, score: 0 }, summary: 'Reviewed summary' }

@@ -74,21 +74,63 @@ Rules:
 - Do not include answers, scores, clinical findings, recommendations, conditions, visibility rules, IDs from real patients or any unsupported fields.
 - Do not imply that this form makes a diagnosis or is a validated questionnaire. If I request a named validated instrument, do not invent its items or scoring; ask me for an authorized source instead.
 - Keep the output file below 80 KB.
+- Never repeat a tab title or question within a tab. Reuse an existing tab title when adding questions to it. Existing questions must keep their answer types and options unchanged.
 
 Build the tabs and questions for this request (replace this line with my requirements):
 [Describe the assessment topics, tab names and any specific questions or answer types I want.]`
 
 export function importTabs(existing, incoming, mode, newId = () => crypto.randomUUID()) {
   if (!['append', 'replace'].includes(mode)) throw new Error('Choose how to import the tabs.')
-  const imported = incoming.map((tab) => ({
-    ...tab,
-    id: newId(),
-    questions: tab.questions.map((question) => ({ ...question, id: newId() })),
-  }))
-  const tabs = mode === 'append' ? [...existing, ...imported] : imported
+  const tabs = mode === 'append' ? structuredClone(existing) : []
+  for (const tab of incoming) {
+    const matches = tabs.filter((item) => templateKey(item.title) === templateKey(tab.title))
+    if (matches.length > 1)
+      throw new Error(
+        `More than one existing tab is named "${tab.title}". Rename them before importing into that tab.`,
+      )
+    let target = matches[0]
+    if (!target) {
+      target = { ...tab, id: newId(), questions: [] }
+      tabs.push(target)
+    }
+    for (const question of tab.questions) {
+      const previous = target.questions.filter(
+        (item) => templateKey(item.label) === templateKey(question.label),
+      )
+      if (previous.length) {
+        if (
+          previous.some(
+            (item) =>
+              item.type !== question.type ||
+              JSON.stringify((item.options || []).map(templateKey).sort()) !==
+                JSON.stringify((question.options || []).map(templateKey).sort()),
+          )
+        )
+          throw new Error(
+            `"${question.label}" in "${tab.title}" already exists with a different answer type or choices. Review it in the template editor before importing.`,
+          )
+        continue
+      }
+      target.questions.push({ ...question, options: [...question.options], id: newId() })
+    }
+  }
   if (tabs.length > 10)
     throw new Error(
       'The combined template exceeds 10 tabs. Import fewer tabs or choose Replace existing tabs.',
     )
   return tabs
+}
+
+// Ignore formatting differences, but retain meaningful wording, numbers and negation.
+const templateKey = (value) =>
+  value
+    .normalize('NFKC')
+    .toLocaleLowerCase('en')
+    .replace(/[\p{P}\p{Z}\s]+/gu, ' ')
+    .trim()
+
+export function templateInstructions(tabs) {
+  return tabs.length
+    ? `${templateAuthoringPrompt}\n\nExisting blank template (reference only; return only additions, without repeating existing questions):\n${JSON.stringify(templateFile(tabs), null, 2)}`
+    : templateAuthoringPrompt
 }

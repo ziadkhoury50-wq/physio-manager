@@ -19,7 +19,7 @@ import {
   templateFile,
   importTabs,
   parseTemplateJson,
-  templateAuthoringPrompt,
+  templateInstructions,
 } from '../lib/template-transfer'
 import './PatientIntake.css'
 import {
@@ -252,7 +252,7 @@ export function IntakeSettings({ onDirty }) {
   }
   async function copyAiInstructions() {
     try {
-      await navigator.clipboard.writeText(templateAuthoringPrompt)
+      await navigator.clipboard.writeText(templateInstructions(tabs))
       setTransferNotice(
         'Instructions copied. Use them with any AI tool, then paste its response below.',
       )
@@ -270,8 +270,15 @@ export function IntakeSettings({ onDirty }) {
       return
     try {
       const next = importTabs(tabs, preview, importMode)
+      if (JSON.stringify(next) === JSON.stringify(tabs)) {
+        setTransferNotice('These tabs and questions already exist. Nothing was added.')
+        setPreview(null)
+        return
+      }
       if (await save(next)) {
-        setActiveId(next[importMode === 'append' ? tabs.length : 0]?.id ?? null)
+        setActiveId(
+          next.find((tab) => !tabs.some((old) => old.id === tab.id))?.id ?? next[0]?.id ?? null,
+        )
         setPreview(null)
         setTransferNotice('Assessment tabs imported and saved for your practice.')
       }
@@ -515,7 +522,7 @@ export function IntakeSettings({ onDirty }) {
               <textarea
                 rows={7}
                 readOnly
-                value={templateAuthoringPrompt}
+                value={templateInstructions(tabs)}
                 onFocus={(event) => event.target.select()}
               />
             </Field>
@@ -613,7 +620,11 @@ export function IntakeSettings({ onDirty }) {
                 <option value="replace">Replace existing tabs</option>
               </Select>
             </Field>
-            <p>Patient records and previously saved assessments are preserved.</p>
+            <p>
+              Matching tab names are merged. Existing questions are skipped, and conflicting answer
+              types or choices stop the import for review. Patient records keep their saved
+              assessments.
+            </p>
             <div className="intake-actions">
               <button type="button" className="button primary" onClick={applyImport}>
                 <Check size={15} /> {previewSource === 'ai' ? 'Use these tabs' : 'Import and save'}
