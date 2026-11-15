@@ -166,66 +166,86 @@ export function IntakeSettings({ onDirty }) {
                 <Trash2 size={15} /> Remove tab
               </button>
             </div>
-            {tab.questions.map((q, i) => (
-              <div className="intake-question-editor" key={q.id}>
-                <Field label={`Question ${i + 1}`}>
-                  <input
-                    value={q.label}
-                    maxLength={240}
-                    onChange={(e) => questionChange(tab, q.id, { label: e.target.value })}
-                  />
-                </Field>
-                <Field label={`Answer type for question ${i + 1}`}>
-                  <Select
-                    value={q.type}
-                    onChange={(e) =>
-                      questionChange(tab, q.id, {
-                        type: e.target.value,
-                        options: e.target.value === 'choice' ? ['Option 1', 'Option 2'] : [],
-                      })
-                    }
-                  >
-                    <option value="boolean">Yes / No</option>
-                    <option value="text">Text</option>
-                    <option value="number">Number</option>
-                    <option value="choice">Choice</option>
-                  </Select>
-                </Field>
-                {q.type === 'choice' && (
-                  <Field
-                    label={`Choices for question ${i + 1}`}
-                    hint="One option per line; at least two distinct choices."
-                  >
-                    <textarea
-                      rows={3}
-                      value={q.options.join('\n')}
-                      onChange={(e) =>
-                        questionChange(tab, q.id, { options: e.target.value.split('\n') })
-                      }
-                    />
-                  </Field>
-                )}
-                <label className="intake-required">
-                  <input
-                    type="checkbox"
-                    checked={q.required}
-                    onChange={(e) => questionChange(tab, q.id, { required: e.target.checked })}
-                  />{' '}
-                  Required answer
-                </label>
-                <button
-                  type="button"
-                  className="text-link"
-                  onClick={() =>
-                    tabChange(tab.id, {
-                      questions: tab.questions.filter((item) => item.id !== q.id),
-                    })
-                  }
-                >
-                  <Trash2 size={14} /> Remove question
-                </button>
-              </div>
-            ))}
+            <table className="intake-table intake-template-table">
+              <caption className="visually-hidden">Questions for {tab.title || 'this tab'}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Question</th>
+                  <th scope="col">Answer type / options</th>
+                  <th scope="col">Settings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tab.questions.map((q, i) => (
+                  <tr key={q.id}>
+                    <td data-column="Question">
+                      <Field label={`Question ${i + 1}`}>
+                        <input
+                          value={q.label}
+                          maxLength={240}
+                          onChange={(e) => questionChange(tab, q.id, { label: e.target.value })}
+                        />
+                      </Field>
+                    </td>
+                    <td data-column="Answer type / options">
+                      <Field label={`Answer type for question ${i + 1}`}>
+                        <Select
+                          value={q.type}
+                          onChange={(e) =>
+                            questionChange(tab, q.id, {
+                              type: e.target.value,
+                              options: e.target.value === 'choice' ? ['Option 1', 'Option 2'] : [],
+                            })
+                          }
+                        >
+                          <option value="boolean">Yes / No</option>
+                          <option value="text">Text</option>
+                          <option value="number">Number</option>
+                          <option value="choice">Choice</option>
+                        </Select>
+                      </Field>
+                      {q.type === 'choice' && (
+                        <Field
+                          label={`Choices for question ${i + 1}`}
+                          hint="One option per line; at least two distinct choices."
+                        >
+                          <textarea
+                            rows={3}
+                            value={q.options.join('\n')}
+                            onChange={(e) =>
+                              questionChange(tab, q.id, { options: e.target.value.split('\n') })
+                            }
+                          />
+                        </Field>
+                      )}
+                    </td>
+                    <td data-column="Settings">
+                      <label className="intake-required">
+                        <input
+                          type="checkbox"
+                          checked={q.required}
+                          onChange={(e) =>
+                            questionChange(tab, q.id, { required: e.target.checked })
+                          }
+                        />{' '}
+                        Required answer
+                      </label>
+                      <button
+                        type="button"
+                        className="text-link"
+                        onClick={() =>
+                          tabChange(tab.id, {
+                            questions: tab.questions.filter((item) => item.id !== q.id),
+                          })
+                        }
+                      >
+                        <Trash2 size={14} /> Remove question
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             <button
               type="button"
               className="button secondary"
@@ -369,53 +389,70 @@ export function PatientIntakeForm({ draft, update, children }) {
       {intake.tabs.map((tab) => (
         <section key={tab.id} hidden={active !== tab.id} onInvalidCapture={() => setActive(tab.id)}>
           <h3>{tab.title}</h3>
-          <div className="intake-answer-grid">
-            {tab.questions.map((q) => (
-              <Field key={q.id} label={`${q.label}${q.required ? ' *' : ''}`}>
-                {q.type === 'text' ? (
-                  <textarea
-                    rows={3}
-                    maxLength={1200}
-                    required={q.required}
-                    value={intake.answers[q.id] ?? ''}
-                    onChange={(e) => answer(q, e.target.value)}
-                  />
-                ) : q.type === 'number' ? (
-                  <input
-                    type="number"
-                    step="any"
-                    required={q.required}
-                    value={intake.answers[q.id] ?? ''}
-                    onChange={(e) =>
-                      answer(q, e.target.value === '' ? null : Number(e.target.value))
-                    }
-                  />
-                ) : (
-                  <Select
-                    required={q.required}
-                    value={intake.answers[q.id] == null ? '' : String(intake.answers[q.id])}
-                    onChange={(e) =>
-                      answer(
-                        q,
-                        e.target.value === ''
-                          ? null
-                          : q.type === 'boolean'
-                            ? e.target.value === 'true'
-                            : e.target.value,
-                      )
-                    }
-                  >
-                    <option value="">Not answered</option>
-                    {(q.type === 'boolean' ? ['true', 'false'] : q.options).map((value) => (
-                      <option value={value} key={value}>
-                        {q.type === 'boolean' ? (value === 'true' ? 'Yes' : 'No') : value}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              </Field>
-            ))}
-          </div>
+          <table className="intake-table intake-patient-table">
+            <caption className="visually-hidden">{tab.title} questions and answers</caption>
+            <thead>
+              <tr>
+                <th scope="col">Question</th>
+                <th scope="col">Answer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tab.questions.map((q) => (
+                <tr key={q.id}>
+                  <th scope="row">
+                    {q.label}
+                    {q.required ? ' *' : ''}
+                  </th>
+                  <td>
+                    <Field label={`${q.label}${q.required ? ' *' : ''}`}>
+                      {q.type === 'text' ? (
+                        <textarea
+                          rows={3}
+                          maxLength={1200}
+                          required={q.required}
+                          value={intake.answers[q.id] ?? ''}
+                          onChange={(e) => answer(q, e.target.value)}
+                        />
+                      ) : q.type === 'number' ? (
+                        <input
+                          type="number"
+                          step="any"
+                          required={q.required}
+                          value={intake.answers[q.id] ?? ''}
+                          onChange={(e) =>
+                            answer(q, e.target.value === '' ? null : Number(e.target.value))
+                          }
+                        />
+                      ) : (
+                        <Select
+                          required={q.required}
+                          value={intake.answers[q.id] == null ? '' : String(intake.answers[q.id])}
+                          onChange={(e) =>
+                            answer(
+                              q,
+                              e.target.value === ''
+                                ? null
+                                : q.type === 'boolean'
+                                  ? e.target.value === 'true'
+                                  : e.target.value,
+                            )
+                          }
+                        >
+                          <option value="">Not answered</option>
+                          {(q.type === 'boolean' ? ['true', 'false'] : q.options).map((value) => (
+                            <option value={value} key={value}>
+                              {q.type === 'boolean' ? (value === 'true' ? 'Yes' : 'No') : value}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </Field>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       ))}
       <div className="intake-actions">
@@ -590,14 +627,22 @@ export function IntakeProfile({ patient, onEdit }) {
         {intake.tabs.map((tab) => (
           <section key={tab.id}>
             <h3>{tab.title}</h3>
-            <dl>
-              {tab.questions.map((q) => (
-                <div key={q.id}>
-                  <dt>{q.label}</dt>
-                  <dd>{answerText(intake.answers[q.id])}</dd>
-                </div>
-              ))}
-            </dl>
+            <table className="intake-table intake-patient-table">
+              <thead>
+                <tr>
+                  <th scope="col">Question</th>
+                  <th scope="col">Answer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tab.questions.map((q) => (
+                  <tr key={q.id}>
+                    <th scope="row">{q.label}</th>
+                    <td>{answerText(intake.answers[q.id])}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </section>
         ))}
       </details>

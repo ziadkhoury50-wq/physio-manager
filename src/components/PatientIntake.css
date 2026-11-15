@@ -4,6 +4,92 @@
   margin: 16px 0 0;
   min-width: 0;
 }
+.intake-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #e1e7e3;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 18px 0;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.intake-table th,
+.intake-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 14px;
+  overflow-wrap: anywhere;
+}
+.intake-table thead th {
+  background: #f6f8f7;
+  color: #64716a;
+  font-size: 11px;
+  font-weight: 500;
+  border-bottom: 1px solid #e1e7e3;
+}
+.intake-table tbody tr + tr > * {
+  border-top: 1px solid #e5eae7;
+}
+.intake-table tr > * + * {
+  border-left: 1px solid #e5eae7;
+}
+.intake-table th[scope='row'] {
+  font-weight: 500;
+  width: 42%;
+}
+.intake-table .field + .field {
+  margin-top: 12px;
+}
+.intake-table .text-link {
+  margin-top: 14px;
+}
+.intake-table .field > label,
+.intake-table .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .intake-table th,
+  .intake-table td {
+    padding: 10px;
+  }
+  .intake-template-table,
+  .intake-template-table tbody,
+  .intake-template-table tr,
+  .intake-template-table td {
+    display: block;
+    width: 100%;
+  }
+  .intake-template-table thead {
+    display: none;
+  }
+  .intake-template-table tr > td + td {
+    border-left: 0;
+  }
+  .intake-template-table tbody tr + tr {
+    border-top: 1px solid #d6dfd9;
+  }
+  .intake-template-table tbody tr + tr > td {
+    border-top: 0;
+  }
+  .intake-template-table td::before {
+    content: attr(data-column);
+    display: block;
+    font-size: 11px;
+    color: #64716a;
+    margin-bottom: 8px;
+  }
+}
 .intake-template-tab {
   border: 1px solid #e1e7e3;
   border-radius: 12px;
