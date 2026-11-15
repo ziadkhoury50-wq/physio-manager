@@ -1,0 +1,76 @@
+.settings-page-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.settings-section-nav {
+  display: grid;
+  gap: 6px;
+  position: sticky;
+  top: 24px;
+}
+.settings-section-nav a {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #4d6257;
+}
+.settings-section-nav a:hover {
+  background: #eaf0ec;
+}
+.settings-panels {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.settings-panels > .panel {
+  min-width: 0;
+  scroll-margin-top: 24px;
+}
+.settings-panels h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+.settings-panels .intake-settings {
+  padding-top: 0;
+  border-top: 0;
+}
+.settings-panels .intake-settings > h3 {
+  font-size: 18px;
+}
+.settings-panels .settings-section > p {
+  color: #64716a;
+  font-size: 12px;
+}
+.settings-panels .field {
+  max-width: 100%;
+}
+@media (max-width: 1100px) {
+  .settings-page-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-section-nav {
+    display: flex;
+    overflow-x: auto;
+    position: static;
+    min-width: 0;
+  }
+  .settings-section-nav a {
+    flex-shrink: 0;
+  }
+}
+@media (max-width: 600px) {
+  .settings-panels > .panel {
+    padding: 18px 14px;
+  }
+  .settings-page-layout {
+    gap: 16px;
+  }
+  .settings-page .page-heading h1 {
+    font-size: 30px;
+  }
+}

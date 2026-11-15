@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Check, ClipboardList, LoaderCircle, Plus, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ClipboardList,
+  LoaderCircle,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { api } from '../lib/api'
 import { Field } from './UI'
 import Select from './Select'
@@ -42,6 +50,14 @@ export function IntakeSettings({ onDirty }) {
   const [dirty, setDirty] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [activeId, setActiveId] = useState(null)
+  const tabBar = useRef(null)
+  const currentId = tabs.some((tab) => tab.id === activeId) ? activeId : tabs[0]?.id
+  useEffect(() => {
+    tabBar.current
+      ?.querySelector('[aria-pressed="true"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [currentId])
   async function load() {
     setBusy(true)
     setError('')
@@ -88,23 +104,57 @@ export function IntakeSettings({ onDirty }) {
     })
   }
   function move(index, direction) {
+    setActiveId(currentId)
     const next = [...tabs]
     ;[next[index], next[index + direction]] = [next[index + direction], next[index]]
     change(next)
   }
-  async function save() {
+  async function save(next = tabs) {
+    for (const tab of next) {
+      if (!tab.title.trim()) {
+        setError('Give the current tab a name before continuing.')
+        return false
+      }
+      for (const question of tab.questions) {
+        if (
+          !question.label.trim() ||
+          (question.type === 'choice' &&
+            (question.options.length < 2 ||
+              question.options.some((value) => !value.trim()) ||
+              new Set(question.options.map((value) => value.trim())).size !==
+                question.options.length))
+        ) {
+          setError(
+            'Complete each question and provide at least two distinct choices for choice questions before continuing.',
+          )
+          return false
+        }
+      }
+    }
     setBusy(true)
     setError('')
     try {
-      setTabs((await api('/intake-template', { method: 'PUT', body: { tabs } })).tabs)
+      setTabs((await api('/intake-template', { method: 'PUT', body: { tabs: next } })).tabs)
       setDirty(false)
       onDirty?.(false)
       setSaved(true)
+      return true
     } catch (e) {
       setError(e.message)
+      return false
     } finally {
       setBusy(false)
     }
+  }
+  async function selectTab(id) {
+    if (id === currentId) return
+    if (dirty && !(await save())) return
+    setActiveId(id)
+  }
+  async function addTab() {
+    if (dirty && !(await save())) return
+    const tab = { id: uid(), title: `Tab ${tabs.length + 1}`, questions: [] }
+    if (await save([...tabs, tab])) setActiveId(tab.id)
   }
   return (
     <section className="intake-settings settings-section">
@@ -123,158 +173,183 @@ export function IntakeSettings({ onDirty }) {
         </p>
       )}
       <fieldset disabled={busy || !loaded} className="intake-editor">
-        {tabs.map((tab, index) => (
-          <section className="intake-template-tab" key={tab.id}>
-            <Field label={`Tab ${index + 1} name`}>
-              <input
-                value={tab.title}
-                maxLength={80}
-                onChange={(e) => tabChange(tab.id, { title: e.target.value })}
-              />
-            </Field>
-            <div className="intake-actions">
-              <button
-                type="button"
-                className="button secondary"
-                aria-label={`Move tab ${index + 1} up`}
-                disabled={!index}
-                onClick={() => move(index, -1)}
-              >
-                <ArrowUp size={15} />
-              </button>
-              <button
-                type="button"
-                className="button secondary"
-                aria-label={`Move tab ${index + 1} down`}
-                disabled={index === tabs.length - 1}
-                onClick={() => move(index, 1)}
-              >
-                <ArrowDown size={15} />
-              </button>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      'Remove this tab from the template? Saved patient answers will remain.',
-                    )
-                  )
-                    change(tabs.filter((t) => t.id !== tab.id))
-                }}
-              >
-                <Trash2 size={15} /> Remove tab
-              </button>
-            </div>
-            <table className="intake-table intake-template-table">
-              <caption className="visually-hidden">Questions for {tab.title || 'this tab'}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Question</th>
-                  <th scope="col">Answer type / options</th>
-                  <th scope="col">Settings</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tab.questions.map((q, i) => (
-                  <tr key={q.id}>
-                    <td data-column="Question">
-                      <Field label={`Question ${i + 1}`}>
-                        <input
-                          value={q.label}
-                          maxLength={240}
-                          onChange={(e) => questionChange(tab, q.id, { label: e.target.value })}
-                        />
-                      </Field>
-                    </td>
-                    <td data-column="Answer type / options">
-                      <Field label={`Answer type for question ${i + 1}`}>
-                        <Select
-                          value={q.type}
-                          onChange={(e) =>
-                            questionChange(tab, q.id, {
-                              type: e.target.value,
-                              options: e.target.value === 'choice' ? ['Option 1', 'Option 2'] : [],
-                            })
-                          }
-                        >
-                          <option value="boolean">Yes / No</option>
-                          <option value="text">Text</option>
-                          <option value="number">Number</option>
-                          <option value="choice">Choice</option>
-                        </Select>
-                      </Field>
-                      {q.type === 'choice' && (
-                        <Field
-                          label={`Choices for question ${i + 1}`}
-                          hint="One option per line; at least two distinct choices."
-                        >
-                          <textarea
-                            rows={3}
-                            value={q.options.join('\n')}
-                            onChange={(e) =>
-                              questionChange(tab, q.id, { options: e.target.value.split('\n') })
-                            }
-                          />
-                        </Field>
-                      )}
-                    </td>
-                    <td data-column="Settings">
-                      <label className="intake-required">
-                        <input
-                          type="checkbox"
-                          checked={q.required}
-                          onChange={(e) =>
-                            questionChange(tab, q.id, { required: e.target.checked })
-                          }
-                        />{' '}
-                        Required answer
-                      </label>
-                      <button
-                        type="button"
-                        className="text-link"
-                        onClick={() =>
-                          tabChange(tab.id, {
-                            questions: tab.questions.filter((item) => item.id !== q.id),
-                          })
-                        }
-                      >
-                        <Trash2 size={14} /> Remove question
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div
+          className="intake-tabs intake-template-tabs"
+          aria-label="Assessment template tabs"
+          ref={tabBar}
+        >
+          {tabs.map((tab) => (
             <button
               type="button"
-              className="button secondary"
-              disabled={
-                tab.questions.length >= 10 || tabs.reduce((n, t) => n + t.questions.length, 0) >= 40
-              }
-              onClick={() =>
-                tabChange(tab.id, {
-                  questions: [
-                    ...tab.questions,
-                    { id: uid(), label: '', type: 'boolean', required: false, options: [] },
-                  ],
-                })
-              }
+              key={tab.id}
+              className={tab.id === currentId ? 'selected' : ''}
+              aria-pressed={tab.id === currentId}
+              onClick={() => selectTab(tab.id)}
             >
-              <Plus size={15} /> Add question
+              {tab.title || 'Untitled tab'}
             </button>
-          </section>
-        ))}
-        <div className="intake-actions">
+          ))}
           <button
             type="button"
-            className="button secondary"
+            className="intake-new-tab"
             disabled={tabs.length >= 10}
-            onClick={() => change([...tabs, { id: uid(), title: '', questions: [] }])}
+            onClick={addTab}
           >
             <Plus size={15} /> Add tab
           </button>
-          <button type="button" className="button primary" disabled={!dirty} onClick={save}>
+        </div>
+        <p className="intake-save-hint">Your current tab saves when you add or switch tabs.</p>
+        {tabs.map(
+          (tab, index) =>
+            tab.id === currentId && (
+              <section className="intake-template-tab" key={tab.id}>
+                <Field label={`Tab ${index + 1} name`}>
+                  <input
+                    value={tab.title}
+                    maxLength={80}
+                    onChange={(e) => tabChange(tab.id, { title: e.target.value })}
+                  />
+                </Field>
+                <div className="intake-actions">
+                  <button
+                    type="button"
+                    className="button secondary"
+                    aria-label={`Move tab ${index + 1} left`}
+                    disabled={!index}
+                    onClick={() => move(index, -1)}
+                  >
+                    <ArrowLeft size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    aria-label={`Move tab ${index + 1} right`}
+                    disabled={index === tabs.length - 1}
+                    onClick={() => move(index, 1)}
+                  >
+                    <ArrowRight size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          'Remove this tab from the template? Saved patient answers will remain.',
+                        )
+                      )
+                        change(tabs.filter((t) => t.id !== tab.id))
+                    }}
+                  >
+                    <Trash2 size={15} /> Remove tab
+                  </button>
+                </div>
+                <table className="intake-table intake-template-table">
+                  <caption className="visually-hidden">
+                    Questions for {tab.title || 'this tab'}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Question</th>
+                      <th scope="col">Answer type / options</th>
+                      <th scope="col">Settings</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tab.questions.map((q, i) => (
+                      <tr key={q.id}>
+                        <td data-column="Question">
+                          <Field label={`Question ${i + 1}`}>
+                            <input
+                              value={q.label}
+                              maxLength={240}
+                              onChange={(e) => questionChange(tab, q.id, { label: e.target.value })}
+                            />
+                          </Field>
+                        </td>
+                        <td data-column="Answer type / options">
+                          <Field label={`Answer type for question ${i + 1}`}>
+                            <Select
+                              value={q.type}
+                              onChange={(e) =>
+                                questionChange(tab, q.id, {
+                                  type: e.target.value,
+                                  options:
+                                    e.target.value === 'choice' ? ['Option 1', 'Option 2'] : [],
+                                })
+                              }
+                            >
+                              <option value="boolean">Yes / No</option>
+                              <option value="text">Text</option>
+                              <option value="number">Number</option>
+                              <option value="choice">Choice</option>
+                            </Select>
+                          </Field>
+                          {q.type === 'choice' && (
+                            <Field
+                              label={`Choices for question ${i + 1}`}
+                              hint="One option per line; at least two distinct choices."
+                            >
+                              <textarea
+                                rows={3}
+                                value={q.options.join('\n')}
+                                onChange={(e) =>
+                                  questionChange(tab, q.id, { options: e.target.value.split('\n') })
+                                }
+                              />
+                            </Field>
+                          )}
+                        </td>
+                        <td data-column="Settings">
+                          <label className="intake-required">
+                            <input
+                              type="checkbox"
+                              checked={q.required}
+                              onChange={(e) =>
+                                questionChange(tab, q.id, { required: e.target.checked })
+                              }
+                            />{' '}
+                            Required answer
+                          </label>
+                          <button
+                            type="button"
+                            className="text-link"
+                            onClick={() =>
+                              tabChange(tab.id, {
+                                questions: tab.questions.filter((item) => item.id !== q.id),
+                              })
+                            }
+                          >
+                            <Trash2 size={14} /> Remove question
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={
+                    tab.questions.length >= 10 ||
+                    tabs.reduce((n, t) => n + t.questions.length, 0) >= 40
+                  }
+                  onClick={() =>
+                    tabChange(tab.id, {
+                      questions: [
+                        ...tab.questions,
+                        { id: uid(), label: '', type: 'boolean', required: false, options: [] },
+                      ],
+                    })
+                  }
+                >
+                  <Plus size={15} /> Add question
+                </button>
+              </section>
+            ),
+        )}
+        <div className="intake-actions">
+          <button type="button" className="button primary" disabled={!dirty} onClick={() => save()}>
             <Check size={15} /> Save template
           </button>
         </div>

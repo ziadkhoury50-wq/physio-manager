@@ -124,17 +124,36 @@
 }
 .intake-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 3px 10px;
+  scroll-padding-inline: 3px;
   gap: 8px;
   margin-bottom: 24px;
 }
 .intake-tabs button {
+  flex-shrink: 0;
+  max-width: 240px;
   padding: 10px 14px;
   background: #fff;
   border: 1px solid #e0e7e3;
   border-radius: 8px;
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+.intake-template-tabs {
+  margin-bottom: 4px;
+}
+.intake-tabs .intake-new-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-style: dashed;
+}
+.intake-save-hint {
+  margin-bottom: 18px;
 }
 .intake-tabs button.selected {
   background: #edf5f0;

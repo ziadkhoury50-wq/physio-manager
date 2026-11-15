@@ -779,9 +779,7 @@ test('selects have white menus, separators, keyboard support, and work inside mo
   await expect(page.getByRole('dialog')).toBeVisible()
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-  if (await page.getByRole('button', { name: /Open settings/ }).isVisible())
-    await page.getByRole('button', { name: /Open settings/ }).click()
-  else await page.locator('.doctor-account').click()
+  await tab(page, 'Settings')
   await chooseOption(page, 'Clinic time zone', 'UTC')
   await expect(page.getByRole('combobox', { name: 'Clinic time zone', exact: true })).toContainText(
     'UTC',
@@ -811,9 +809,7 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   })
   await page.goto('/')
   await expect(page.locator('.page-heading')).toBeVisible()
-  if (await page.getByRole('button', { name: /Open settings/ }).isVisible())
-    await page.getByRole('button', { name: /Open settings/ }).click()
-  else await page.locator('.doctor-account').click()
+  await tab(page, 'Settings')
   await page.getByRole('button', { name: 'Add tab', exact: true }).click()
   await page.getByLabel('Tab 1 name', { exact: true }).fill('Screening')
   await page.getByRole('button', { name: 'Add question', exact: true }).click()
@@ -821,10 +817,31 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByRole('button', { name: 'Add question', exact: true }).click()
   await page.getByLabel('Question 2', { exact: true }).fill('Pain score')
   await chooseOption(page, 'Answer type for question 2', 'Number')
-  await page.getByRole('button', { name: 'Save template', exact: true }).click()
-  await expect(page.getByText('Template saved for your practice.', { exact: true })).toBeVisible()
+  let rejectNextSave = true
+  await page.route('**/api/intake-template', async (route) => {
+    if (route.request().method() === 'PUT' && rejectNextSave) {
+      rejectNextSave = false
+      return route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Template save unavailable. Try again.' }),
+      })
+    }
+    return route.fallback()
+  })
+  await page.getByRole('button', { name: 'Add tab', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Template save unavailable')
+  await expect(page.getByLabel('Question 1', { exact: true })).toHaveValue('Night pain?')
+  await expect(page.getByLabel('Tab 2 name', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Add tab', exact: true }).click()
+  await expect(page.getByLabel('Tab 2 name', { exact: true })).toBeVisible()
+  await page.getByLabel('Tab 2 name', { exact: true }).fill('Mobility')
+  await page.getByRole('button', { name: 'Screening', exact: true }).click()
+  await expect(page.getByLabel('Question 1', { exact: true })).toHaveValue('Night pain?')
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Mobility', exact: true })).toBeVisible()
+  await expect(page.getByLabel('Question 1', { exact: true })).toHaveValue('Night pain?')
   await noOverflow(page)
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await tab(page, 'Patients')
   await page.getByRole('button', { name: 'New patient', exact: true }).click()
   await page.getByLabel('Full name *', { exact: true }).fill('Intake Patient')

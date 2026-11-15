@@ -5,13 +5,12 @@ import {
   CheckCircle2,
   ExternalLink,
   LoaderCircle,
-  LogOut,
   MapPin,
   Plus,
   Trash2,
   Users,
 } from 'lucide-react'
-import { CLINIC_ZONE, eventDate, eventTime, formatDate } from '../lib/dates'
+import { eventDate, eventTime, formatDate } from '../lib/dates'
 import { Dialog, Field } from './UI'
 import Select from './Select'
 import './Select.css'
@@ -19,7 +18,7 @@ import ClinicalAssistant from './ClinicalAssistant'
 import { paymentLabel, usd } from '../lib/revenue'
 import FieldAIHelp from './FieldAIHelp'
 import './PatientMatching.css'
-import { IntakeSettings, PatientIntakeForm } from './PatientIntake'
+import { PatientIntakeForm } from './PatientIntake'
 
 export default function WorkspaceDialogs({
   modal,
@@ -37,19 +36,8 @@ export default function WorkspaceDialogs({
   markPaymentReceived,
   calendarId,
   timeZone,
-  setTimeZone,
-  connection,
-  calendars,
-  setCalendarId,
-  savedAt,
-  disconnectGoogle,
   calendarBusy,
-  connectGoogle,
-  calendarError,
-  auth,
   onProfile,
-  onSignOut,
-  onTemplateDirty,
 }) {
   const sessionPatient = data.patients.find((item) => item.id === draft.patient_id)
   if (!modal) return null
@@ -566,93 +554,5 @@ export default function WorkspaceDialogs({
       </Dialog>
     )
   }
-  if (modal.type === 'settings')
-    return (
-      <Dialog
-        key="settings"
-        wide
-        title="Your workspace"
-        subtitle="Just the essentials for your practice."
-        onClose={closeModal}
-      >
-        <div className="settings-content">
-          <IntakeSettings onDirty={onTemplateDirty} />
-          <Field label="Clinic time zone">
-            <Select value={timeZone} onChange={(e) => setTimeZone(e.target.value)}>
-              {[
-                CLINIC_ZONE,
-                'UTC',
-                'Europe/London',
-                'Europe/Paris',
-                'Asia/Dubai',
-                'America/New_York',
-                'America/Los_Angeles',
-              ].map((zone) => (
-                <option key={zone}>{zone}</option>
-              ))}
-            </Select>
-          </Field>
-          <div className="settings-section">
-            <h3>Google Calendar</h3>
-            <p>View existing appointments. Your patient records stay in this app.</p>
-            {connection ? (
-              <>
-                <Field label="Calendar to display">
-                  <Select value={calendarId} onChange={(e) => setCalendarId(e.target.value)}>
-                    {calendars.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.summary}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <div className="connection-status">
-                  <span className="status-dot" />
-                  Connected · Read-only
-                  {savedAt && (
-                    <small>
-                      Refreshed{' '}
-                      {savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </small>
-                  )}
-                </div>
-                <button
-                  className="button secondary full"
-                  disabled={saving}
-                  onClick={disconnectGoogle}
-                >
-                  Disconnect calendar
-                </button>
-              </>
-            ) : (
-              <button
-                className="button primary full"
-                disabled={calendarBusy}
-                onClick={connectGoogle}
-              >
-                Connect Google Calendar <ArrowRight size={16} />
-              </button>
-            )}
-          </div>
-          {calendarError && (
-            <p className="form-error" role="alert">
-              {calendarError}
-            </p>
-          )}
-          {formError && (
-            <p className="form-error" role="alert">
-              {formError}
-            </p>
-          )}
-          <div className="settings-section">
-            <h3>Doctor account</h3>
-            <p>{auth?.user?.email}</p>
-            <button className="button secondary full" onClick={onSignOut}>
-              <LogOut size={16} /> Sign out
-            </button>
-          </div>
-        </div>
-      </Dialog>
-    )
   return null
 }

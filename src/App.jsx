@@ -21,6 +21,7 @@ import Calendar from './components/Calendar'
 import { PatientDirectory, PatientProfile, SessionDirectory } from './components/Records'
 import WorkspaceDialogs from './components/WorkspaceDialogs'
 import Dashboard from './components/Dashboard'
+import SettingsPage from './components/SettingsPage'
 import { parseUsd } from './lib/revenue'
 import './App.css'
 import './components/Payments.css'
@@ -38,6 +39,7 @@ const navItems = [
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
   { path: '/patients', label: 'Patients', icon: Users },
   { path: '/sessions', label: 'Sessions', icon: ClipboardList },
+  { path: '/settings', label: 'Settings', icon: Settings2 },
 ]
 const newPatient = {
   name: '',
@@ -105,13 +107,15 @@ export default function App() {
     }
   })
   const [savedAt, setSavedAt] = useState(null)
-  const activeTab = route.startsWith('/dashboard')
-    ? '/dashboard'
-    : route.startsWith('/patients')
-      ? '/patients'
-      : route.startsWith('/sessions')
-        ? '/sessions'
-        : '/calendar'
+  const activeTab = route.startsWith('/settings')
+    ? '/settings'
+    : route.startsWith('/dashboard')
+      ? '/dashboard'
+      : route.startsWith('/patients')
+        ? '/patients'
+        : route.startsWith('/sessions')
+          ? '/sessions'
+          : '/calendar'
   const patientId = route.startsWith('/patients/') ? route.split('/')[2] : null
   const today = dateKey(now, timeZone)
 
@@ -380,10 +384,19 @@ export default function App() {
     },
     [modal?.type],
   )
-  function openSettings() {
-    setModal({ type: 'settings' })
-    setDirty(false)
-    setFormError('')
+  function guardNavigation(event, path) {
+    if (activeTab === '/settings' && path !== '/settings' && dirty) {
+      if (!window.confirm('Leave Settings and discard unsaved template changes?')) {
+        event.preventDefault()
+        return
+      }
+      setDirty(false)
+    }
+  }
+  async function signOut() {
+    if (dirty && !window.confirm('Discard unsaved changes and sign out?')) return
+    const { error } = await supabase.auth.signOut()
+    if (error) setFormError('Could not sign out. Please try again.')
   }
 
   async function saveRecord(event) {
@@ -702,6 +715,7 @@ export default function App() {
             <a
               key={path}
               href={`#${path}`}
+              onClick={(event) => guardNavigation(event, path)}
               className={`nav-link ${activeTab === path ? 'active' : ''}`}
               aria-current={activeTab === path ? 'page' : undefined}
             >
@@ -711,14 +725,13 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <button className="doctor-account" onClick={openSettings}>
+          <div className="doctor-account">
             <span className="doctor-avatar">DR</span>
             <span>
               <strong>My practice</strong>
               <small>Physiotherapist</small>
             </span>
-            <Settings2 size={17} />
-          </button>
+          </div>
         </div>
       </aside>
       <div className="main-column">
@@ -734,13 +747,9 @@ export default function App() {
             <span className="topbar-date">
               {formatDate(today, { weekday: 'short', year: 'numeric' })}
             </span>
-            <button
-              className="mobile-account doctor-avatar"
-              aria-label="DR: Open settings"
-              onClick={openSettings}
-            >
+            <span className="mobile-account doctor-avatar" aria-label="Doctor account">
               DR
-            </button>
+            </span>
           </div>
         </header>
         <main>
@@ -750,36 +759,66 @@ export default function App() {
               <button onClick={load}>Retry</button>
             </div>
           )}
-          {activeTab !== '/dashboard' && !(activeTab === '/patients' && patientId) && (
-            <div className="page-heading">
-              <div>
-                <span className="eyebrow">
-                  {activeTab === '/calendar'
-                    ? 'SCHEDULE'
-                    : activeTab === '/patients'
-                      ? 'PATIENT DIRECTORY'
-                      : 'CLINICAL NOTES'}
-                </span>
-                <h1>
-                  Your {activeTab.slice(1)}
-                  <span className="heading-dot">.</span>
-                </h1>
-                <p>
-                  {activeTab === '/calendar'
-                    ? 'Your appointments from Google Calendar.'
-                    : activeTab === '/patients'
-                      ? 'Patient details, treatment history, and progress.'
-                      : 'Treatment notes and follow-up plans.'}
-                </p>
+          {activeTab !== '/settings' &&
+            activeTab !== '/dashboard' &&
+            !(activeTab === '/patients' && patientId) && (
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow">
+                    {activeTab === '/calendar'
+                      ? 'SCHEDULE'
+                      : activeTab === '/patients'
+                        ? 'PATIENT DIRECTORY'
+                        : 'CLINICAL NOTES'}
+                  </span>
+                  <h1>
+                    Your {activeTab.slice(1)}
+                    <span className="heading-dot">.</span>
+                  </h1>
+                  <p>
+                    {activeTab === '/calendar'
+                      ? 'Your appointments from Google Calendar.'
+                      : activeTab === '/patients'
+                        ? 'Patient details, treatment history, and progress.'
+                        : 'Treatment notes and follow-up plans.'}
+                  </p>
+                </div>
+                <button
+                  className="button primary"
+                  onClick={() => (activeTab === '/patients' ? openPatient() : openSession())}
+                >
+                  <Plus size={17} />
+                  {activeTab === '/patients' ? 'New patient' : 'Record session'}
+                </button>
               </div>
-              <button
-                className="button primary"
-                onClick={() => (activeTab === '/patients' ? openPatient() : openSession())}
-              >
-                <Plus size={17} />
-                {activeTab === '/patients' ? 'New patient' : 'Record session'}
-              </button>
-            </div>
+            )}
+          {activeTab === '/settings' && (
+            <>
+              {formError && (
+                <p className="form-error" role="alert">
+                  {formError}
+                </p>
+              )}
+              <SettingsPage
+                onDirty={setDirty}
+                {...{
+                  timeZone,
+                  setTimeZone,
+                  connection,
+                  calendars,
+                  calendarId,
+                  setCalendarId,
+                  savedAt,
+                  saving,
+                  disconnectGoogle,
+                  calendarBusy,
+                  connectGoogle,
+                  calendarError,
+                  auth,
+                }}
+                onSignOut={signOut}
+              />
+            </>
           )}
           {activeTab === '/dashboard' && (
             <Dashboard
@@ -866,6 +905,7 @@ export default function App() {
           <a
             key={path}
             href={`#${path}`}
+            onClick={(event) => guardNavigation(event, path)}
             className={activeTab === path ? 'active' : ''}
             aria-current={activeTab === path ? 'page' : undefined}
           >
@@ -884,7 +924,6 @@ export default function App() {
         </div>
       )}
       <WorkspaceDialogs
-        onTemplateDirty={setDirty}
         markPaymentReceived={markPaymentReceived}
         rematchPatient={rematchPatient}
         deleteSession={(session) => deleteRecord('sessions', session)}
@@ -901,24 +940,11 @@ export default function App() {
           linkPatient,
           calendarId,
           timeZone,
-          setTimeZone,
-          connection,
-          calendars,
-          setCalendarId,
-          savedAt,
-          disconnectGoogle,
           calendarBusy,
-          connectGoogle,
-          calendarError,
-          auth,
         }}
         onProfile={(id) => {
           closeModal()
           navigate(`/patients/${id}`)
-        }}
-        onSignOut={async () => {
-          const { error } = await supabase.auth.signOut()
-          if (error) setFormError('Could not sign out. Please try again.')
         }}
       />
     </div>
