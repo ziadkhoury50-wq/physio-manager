@@ -165,6 +165,9 @@ test('session progress and field AI popups preserve notes and require review bef
   await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
   await page.getByRole('button', { name: 'Record session', exact: true }).click()
   await page
+    .getByLabel('MSK ultrasound imaging', { exact: true })
+    .fill('Long-axis scan findings documented for this visit.')
+  await page
     .getByLabel('Assessment findings', { exact: true })
     .fill('Measured movement documented by clinician.')
   await page.getByRole('spinbutton', { name: /Pain score/ }).fill('2')
@@ -210,6 +213,9 @@ test('session progress and field AI popups preserve notes and require review bef
   )
   expect(requests.map((request) => request.mode)).toEqual(['assessment', 'treatment'])
   expect(requests[0].context).not.toContain('Nadia Farah')
+  expect(requests[0].context).toContain(
+    'msk ultrasound: Long-axis scan findings documented for this visit.',
+  )
   await page.getByRole('button', { name: 'Save session', exact: true }).click()
   await expect(page.locator('.patient-progress-metrics')).toContainText('2/10')
   await expect(page.locator('.patient-progress-metrics')).toContainText('-4 pts')
@@ -217,6 +223,9 @@ test('session progress and field AI popups preserve notes and require review bef
   await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
   await expect(page.locator('.session-assessment-card').first()).toContainText(
     'Measured movement documented by clinician.',
+  )
+  await expect(page.locator('.session-assessment-card').first()).toContainText(
+    'Long-axis scan findings documented for this visit.',
   )
   await expect(page.getByRole('img', { name: /Recorded pain scores/ })).toBeVisible()
   await noOverflow(page)
@@ -231,6 +240,7 @@ test('patient age and background symptoms persist with accessible equal profile 
   await page.getByLabel('Full name *', { exact: true }).fill('Assessment Test Patient')
   await page.getByLabel('Age', { exact: true }).fill('34')
   await page.getByLabel('Symptoms', { exact: true }).fill('Discomfort on reaching overhead.')
+  await page.getByLabel('Imaging findings', { exact: true }).fill('MRI report reviewed and recorded.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.getByText('34 years', { exact: true })).toBeVisible()
   const historyTab = page.getByRole('tab', { name: 'Session history', exact: true })
@@ -243,15 +253,18 @@ test('patient age and background symptoms persist with accessible equal profile 
   expect(Math.abs(aBox.width - bBox.width)).toBeLessThan(1)
   await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Discomfort on reaching overhead.', { exact: true })).toBeVisible()
+  await expect(page.getByText('MRI report reviewed and recorded.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Edit patient', exact: true }).click()
   await page.getByLabel('Age', { exact: true }).fill('0')
   await page.getByLabel('Symptoms', { exact: true }).fill('Updated symptoms recorded.')
+  await page.getByLabel('Imaging findings', { exact: true }).fill('X-ray report reviewed.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await page.reload()
   await expect(page.getByText('0 years', { exact: true })).toBeVisible()
   await assessmentTab.click()
   await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Updated symptoms recorded.', { exact: true })).toBeVisible()
+  await expect(page.getByText('X-ray report reviewed.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Edit patient', exact: true }).click()
   await page.getByLabel('Age', { exact: true }).fill('')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
@@ -864,13 +877,16 @@ test('doctor templates persist and new patient answers and reviewed summary surv
     0,
   )
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
-  await expect(page.locator('.intake-saved-summary')).toContainText('Night pain denied')
+  await page.getByRole('tab', { name: 'Assessment & pain management' }).click()
+  await expect(page.locator('.patient-progress-metrics')).toBeVisible()
+  await expect(page.locator('.intake-saved-summary').first()).toContainText('Night pain denied')
   await expect(page.locator('.intake-summary-section ul li')).toHaveCount(1)
   await expect(
     page.locator('.intake-summary-section').filter({ hasText: 'Concerns to review' }),
   ).toContainText('No concerns documented.')
   await page.reload()
-  await expect(page.locator('.intake-saved-summary')).toContainText('Night pain denied')
+  await page.getByRole('tab', { name: 'Assessment & pain management' }).click()
+  await expect(page.locator('.intake-saved-summary').first()).toContainText('Night pain denied')
   await page.getByText('View assessment answers', { exact: true }).click()
   await expect(page.locator('.intake-profile')).toContainText('No')
   await expect(page.locator('.intake-profile')).toContainText('0')
@@ -884,7 +900,8 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await chooseOption(page, 'Night pain? *', 'Yes')
   await expect(page.getByLabel('Summary for patient profile', { exact: true })).toHaveValue('')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
-  await expect(page.locator('.intake-saved-summary')).toContainText('Night pain?: Yes')
+  await page.getByRole('tab', { name: 'Assessment & pain management' }).click()
+  await expect(page.locator('.intake-saved-summary').first()).toContainText('Night pain?: Yes')
   const patientUrl = page.url()
   await tab(page, 'Settings')
   page.once('dialog', (dialog) => dialog.accept())
@@ -894,6 +911,7 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await expect(page.getByRole('button', { name: 'Screening', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Mobility', exact: true })).toBeVisible()
   await page.goto(patientUrl)
+  await page.getByRole('tab', { name: 'Assessment & pain management' }).click()
   await page.getByText('View assessment answers', { exact: true }).click()
   await expect(page.locator('.intake-profile')).toContainText('Night pain?')
   await expect(page.locator('.intake-profile')).toContainText('Yes')
@@ -993,6 +1011,7 @@ test('template JSON exports and imports safely, empty tabs stay hidden, and ques
   expect(goals.y).toBeGreaterThan(assessments.y + assessments.height)
   await page.getByLabel('Treatment goals', { exact: true }).fill('Return to daily activities.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await page.getByRole('tab', { name: 'Assessment & pain management' }).click()
   await page.getByText('View assessment answers', { exact: true }).click()
   await expect(page.locator('.intake-profile')).toContainText('Night pain?')
   await expect(

@@ -15,6 +15,7 @@ test('summary context includes the full clinical profile, all questionnaire answ
     email: 'PRIVATE-EMAIL',
     age: 0,
     condition: 'Recorded diagnosis',
+    imaging_findings: 'MRI findings recorded by the referring provider.',
     assessment: 'Patient findings',
     history: 'Legacy medical notes',
     underlying_conditions: 'Relevant history',
@@ -43,6 +44,7 @@ test('summary context includes the full clinical profile, all questionnaire answ
     progress: `Response ${i}`,
     plan: `Next plan ${i}`,
     pain_score: 0,
+    msk_ultrasound: `Ultrasound ${i}`,
     amount_cents: 9876543,
     payment_received: false,
   }))
@@ -54,11 +56,13 @@ test('summary context includes the full clinical profile, all questionnaire answ
   const context = patientSummaryContext(patient, sessions)
   for (const expected of [
     'Recorded assessment: Patient findings',
+    'Imaging findings: MRI findings recorded by the referring provider.',
     'Night pain?: No',
     'Pain score: 0',
     'Missing item: Not answered',
     'Visit findings 0',
     'Visit findings 39',
+    'MSK ultrasound imaging: Ultrasound 0',
     'Treatment 39',
     'Response 39',
     'Next plan 39',

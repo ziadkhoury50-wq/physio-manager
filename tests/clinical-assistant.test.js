@@ -270,12 +270,44 @@ test('summary output enforces short sections, text concerns and uncertainty, and
   assert.equal(
     summaryOutput.safeParse({
       ...summaryDraft,
+      sections: [{ title: 'Overview', summary: 'x'.repeat(101) }],
+    }).success,
+    false,
+  )
+  assert.equal(
+    summaryOutput.safeParse({
+      ...summaryDraft,
       sections: [{ title: 'Overview', summary: 'x'.repeat(181) }],
     }).success,
     false,
   )
   assert.equal(
     summaryOutput.safeParse({ ...summaryDraft, concerns: 'x'.repeat(241) }).success,
+    false,
+  )
+  assert.equal(
+    summaryOutput.safeParse({ ...summaryDraft, concerns: 'x'.repeat(141) }).success,
+    false,
+  )
+  assert.equal(
+    summaryOutput.safeParse({
+      ...summaryDraft,
+      painGuidance: [{ painType: 'Pain', guidance: 'x'.repeat(121) }],
+    }).success,
+    false,
+  )
+  assert.equal(
+    summaryOutput.safeParse({
+      ...summaryDraft,
+      sections: Array.from({ length: 11 }, (_, i) => ({
+        title: `Section ${i}`,
+        summary: 'x'.repeat(100),
+      })),
+      painGuidance: Array.from({ length: 3 }, () => ({
+        painType: 'x'.repeat(80),
+        guidance: 'x'.repeat(120),
+      })),
+    }).success,
     false,
   )
   assert.equal(summaryOutput.safeParse({ ...summaryDraft, questions: [] }).success, false)

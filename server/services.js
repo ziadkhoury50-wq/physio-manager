@@ -5,11 +5,11 @@ import { matchAppointment, normalizeName } from './patient-matching.js'
 import { createIntakeService, summarizeIntake } from './intake.js'
 
 const patientColumns =
-  'id,owner_id,name,phone,referred_by,age,symptoms,assessment,pain_management,condition,underlying_conditions,medication,history,goals,intake,archived,created_at,updated_at'
+  'id,owner_id,name,phone,referred_by,age,symptoms,imaging_findings,assessment,pain_management,condition,underlying_conditions,medication,history,goals,intake,archived,created_at,updated_at'
 const migrationError = () =>
   new HttpError(
     503,
-    'Patient fields need the database update. Run 202611150001_patient_intake.sql in Supabase SQL Editor, then retry.',
+    'Patient fields need the database update. Run 202611150002_clinical_imaging.sql in Supabase SQL Editor, then retry.',
   )
 
 async function readAll(db, table, column, ascending = true, secondary = 'id') {
@@ -186,7 +186,7 @@ export function createServices(config) {
             if (table === 'sessions')
               throw new HttpError(
                 503,
-                'Session fields need the database updates. Run the session migrations, including 202611090002_session_payments.sql, in Supabase SQL Editor, then retry.',
+                'Session fields need the database updates. Run the session migrations, including 202611150002_clinical_imaging.sql, in Supabase SQL Editor, then retry.',
               )
             throw migrationError()
           }

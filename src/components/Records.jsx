@@ -313,7 +313,6 @@ export function PatientProfile({
           </div>
         </aside>
         <div className="profile-content">
-          <IntakeProfile patient={patient} onEdit={() => openPatient(patient)} />
           <ProgressMetrics sessions={records} />
           <div
             className="patient-profile-tabs"
@@ -368,6 +367,7 @@ export function PatientProfile({
               openSession={openSession}
               viewSession={viewSession}
             />
+            <IntakeProfile patient={patient} onEdit={() => openPatient(patient)} />
             <details className="patient-background">
               <summary>Patient background</summary>
               <button
@@ -381,6 +381,7 @@ export function PatientProfile({
                 {[
                   ['Diagnosis', patient.condition, 'No diagnosis recorded.'],
                   ['Symptoms', patient.symptoms, 'No symptoms recorded yet.'],
+                  ['Imaging findings', patient.imaging_findings, 'No imaging findings recorded.'],
                   [
                     'Previous patient-level assessment',
                     patient.assessment,

@@ -134,16 +134,19 @@ test('Express validates writes, rejects injected ownership, and preserves zero p
     name: 'Synthetic',
     age: 0,
     symptoms: 'Recorded symptoms',
+    imaging_findings: 'MRI report reviewed; see report for full detail.',
     assessment: 'Recorded findings',
     pain_management: 'Recorded plan',
   }).expect(201)
   assert.equal(patient.body.age, 0)
   assert.equal(patient.body.symptoms, 'Recorded symptoms')
+  assert.equal(patient.body.imaging_findings, 'MRI report reviewed; see report for full detail.')
   assert.equal(patient.body.assessment, 'Recorded findings')
   assert.equal(patient.body.pain_management, 'Recorded plan')
   await post('/api/patients', { name: 'Synthetic', email: 'invalid' }).expect(400)
   await post('/api/patients', { name: 'Synthetic', referred_by: 'x'.repeat(301) }).expect(400)
   await post('/api/patients', { name: 'Synthetic', medication: 'x'.repeat(10001) }).expect(400)
+  await post('/api/patients', { name: 'Synthetic', imaging_findings: 'x'.repeat(10001) }).expect(400)
   await post('/api/patients', {
     name: 'Synthetic',
     underlying_conditions: 'x'.repeat(10001),
@@ -155,6 +158,7 @@ test('Express validates writes, rejects injected ownership, and preserves zero p
     assessment: 'Visit-specific findings',
     pain_management: 'Visit-specific plan',
     pain_score: 0,
+    msk_ultrasound: 'Long-axis view recorded; no conclusion beyond documented findings.',
   }
   await post('/api/sessions', { ...session, pain_score: 11 }).expect(400)
   await post('/api/sessions', { ...session, pain_score: 2.5 }).expect(400)
@@ -174,6 +178,7 @@ test('Express validates writes, rejects injected ownership, and preserves zero p
   assert.equal(calls[1].record.pain_score, 0)
   assert.equal(calls[1].record.assessment, 'Visit-specific findings')
   assert.equal(calls[1].record.pain_management, 'Visit-specific plan')
+  assert.equal(calls[1].record.msk_ultrasound, session.msk_ultrasound)
   assert.equal(calls[0].doctor.id, doctorId)
   assert.equal('owner_id' in calls[0].record, false)
   assert.equal(calls.length, 3)

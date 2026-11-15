@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
+  Copy,
   Download,
   ClipboardList,
   LoaderCircle,
@@ -473,15 +474,44 @@ export function IntakeSettings({ onDirty }) {
             Create tabs with AI <ChevronDown size={16} aria-hidden="true" />
           </summary>
           <p>
-            Use any AI tool you prefer. Copy the instructions, describe the tabs you want in that
-            tool, then paste its response here. No file download or app AI credits are needed.
+            Build your questionnaire with any AI tool, then review the questions here before saving.
           </p>
+          <ol className="intake-ai-steps">
+            <li>
+              <strong>Copy the instructions</strong>
+              <span>They tell your AI tool how to format the tabs and questions.</span>
+            </li>
+            <li>
+              <strong>Describe what you need</strong>
+              <span>
+                Paste the instructions into your AI tool and describe your assessments. Use template
+                details only, without patient information.
+              </span>
+            </li>
+            <li>
+              <strong>Paste and review</strong>
+              <span>
+                Paste its complete response below, preview the questions, then add them to your
+                template.
+              </span>
+            </li>
+          </ol>
           <button type="button" className="button secondary" onClick={copyAiInstructions}>
+            <Copy size={15} aria-hidden="true" />
             Copy AI instructions
           </button>
           <details className="intake-copy-instructions">
-            <summary>View instructions</summary>
-            <Field label="Instructions for your AI tool">
+            <summary>
+              View instructions <ChevronDown size={16} aria-hidden="true" />
+            </summary>
+            <p>
+              These instructions are ready to copy. If the copy button is unavailable, select the
+              text below and copy it.
+            </p>
+            <Field
+              label="Instructions for your AI tool"
+              hint="Tap or click the text to select all instructions."
+            >
               <textarea
                 rows={7}
                 readOnly
@@ -924,6 +954,7 @@ export function IntakeProfile({ patient, onEdit }) {
   const intake = patient.intake
   if (!intake?.tabs?.some((tab) => tab.questions.length > 0)) return null
   const structured = summarySections(intake.summary || '')
+  const [overview, ...details] = structured || []
   return (
     <section className="panel intake-profile">
       <div className="intake-profile-heading">
@@ -934,37 +965,69 @@ export function IntakeProfile({ patient, onEdit }) {
       </div>
       {intake.summary ? (
         structured ? (
-          <div className="intake-saved-summary intake-structured-summary">
-            {structured.map((section, index) => (
-              <section className="intake-summary-section" key={index}>
-                <h3>{section.title}</h3>
-                {section.bullets ? (
-                  <ul>
-                    {section.bullets.map((bullet, i) => (
-                      <li key={i}>{bullet}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>{section.text}</p>
-                )}
-              </section>
-            ))}
-          </div>
+          <>
+            {overview && (
+              <div className="intake-saved-summary intake-structured-summary">
+                <SummarySection section={overview} />
+              </div>
+            )}
+            {details.length > 0 && (
+              <details className="intake-full-summary">
+                <summary>
+                  View clinical details <span>({details.length} sections)</span>
+                  <ChevronDown size={16} aria-hidden="true" />
+                </summary>
+                <div className="intake-saved-summary intake-structured-summary">
+                  {details.map((section, index) => (
+                    <SummarySection section={section} key={index} />
+                  ))}
+                </div>
+              </details>
+            )}
+          </>
         ) : summaryBullets(intake.summary) ? (
-          <ul className="intake-saved-summary intake-summary-bullets">
-            {summaryBullets(intake.summary).map((bullet, index) => (
-              <li key={index}>{bullet}</li>
-            ))}
-          </ul>
+          <>
+            <ul className="intake-saved-summary intake-summary-bullets">
+              {summaryBullets(intake.summary)
+                .slice(0, 2)
+                .map((bullet, index) => (
+                  <li key={index}>{bullet}</li>
+                ))}
+            </ul>
+            {summaryBullets(intake.summary).length > 2 && (
+              <details className="intake-full-summary">
+                <summary>
+                  View full summary <ChevronDown size={16} aria-hidden="true" />
+                </summary>
+                <ul className="intake-saved-summary intake-summary-bullets">
+                  {summaryBullets(intake.summary)
+                    .slice(2)
+                    .map((bullet, index) => (
+                      <li key={index}>{bullet}</li>
+                    ))}
+                </ul>
+              </details>
+            )}
+          </>
         ) : (
-          <p className="intake-saved-summary">{intake.summary}</p>
+          <>
+            <p className="intake-saved-summary intake-summary-legacy-preview">{intake.summary}</p>
+            {intake.summary.length > 240 && (
+              <details className="intake-full-summary">
+                <summary>
+                  View full summary <ChevronDown size={16} aria-hidden="true" />
+                </summary>
+                <p className="intake-saved-summary">{intake.summary}</p>
+              </details>
+            )}
+          </>
         )
       ) : (
         <p>
           No assessment summary saved yet. Review the answers in Edit assessment to prepare one.
         </p>
       )}
-      <details>
+      <details className="intake-answer-details">
         <summary>
           View assessment answers <ChevronDown size={16} aria-hidden="true" />
         </summary>
@@ -992,6 +1055,23 @@ export function IntakeProfile({ patient, onEdit }) {
             </section>
           ))}
       </details>
+    </section>
+  )
+}
+
+function SummarySection({ section }) {
+  return (
+    <section className="intake-summary-section">
+      <h3>{section.title}</h3>
+      {section.bullets ? (
+        <ul>
+          {section.bullets.map((bullet, i) => (
+            <li key={i}>{bullet}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{section.text}</p>
+      )}
     </section>
   )
 }

@@ -175,6 +175,7 @@ export default function SessionProgress({ records, patient, openSession, viewSes
               <div className="session-assessment-notes">
                 {[
                   ['Symptoms', session.symptoms],
+                  ['MSK ultrasound imaging', session.msk_ultrasound],
                   ['Assessment findings', session.assessment],
                   ['Pain management plan', session.pain_management],
                   ['Progress / response', session.progress],

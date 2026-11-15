@@ -136,6 +136,15 @@ export default function WorkspaceDialogs({
                   placeholder="Reported symptoms, location, onset, and aggravating or easing factors"
                 />
               </Field>
+              <Field label="Imaging findings" wide>
+                <textarea
+                  rows={3}
+                  maxLength={10000}
+                  value={draft.imaging_findings || ''}
+                  onChange={(e) => update('imaging_findings', e.target.value)}
+                  placeholder="Summarize relevant imaging reports or documented findings"
+                />
+              </Field>
             </div>
           </PatientIntakeForm>
           {formError && (
@@ -241,6 +250,15 @@ export default function WorkspaceDialogs({
                 value={draft.pain_score}
                 onChange={(e) => update('pain_score', e.target.value)}
                 placeholder="0 = no pain, 10 = worst pain"
+              />
+            </Field>
+            <Field label="MSK ultrasound imaging" wide>
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.msk_ultrasound || ''}
+                onChange={(e) => update('msk_ultrasound', e.target.value)}
+                placeholder="Ultrasound region, views, observations, and interpretation"
               />
             </Field>
             <Field
@@ -382,6 +400,7 @@ export default function WorkspaceDialogs({
         <div className="session-detail">
           {[
             ['Symptoms', 'symptoms'],
+            ['MSK ultrasound imaging', 'msk_ultrasound'],
             ['Assessment findings', 'assessment'],
             ['Treatment performed', 'treatment'],
             ['Pain management plan', 'pain_management'],

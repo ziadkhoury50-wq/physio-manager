@@ -2,6 +2,7 @@ export function clinicalContext(patient, sessions, draft) {
   const fields = [
     'symptoms',
     'pain_score',
+    'msk_ultrasound',
     'assessment',
     'pain_management',
     'treatment',
@@ -21,6 +22,7 @@ export function clinicalContext(patient, sessions, draft) {
     'age',
     'condition',
     'symptoms',
+    'imaging_findings',
     'assessment',
     'pain_management',
     'underlying_conditions',

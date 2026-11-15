@@ -94,6 +94,12 @@ test('database enforces the single doctor, ownership, private integration storag
         'utf8',
       ),
     )
+    await db.exec(
+      await readFile(
+        new URL('../supabase/migrations/202611150002_clinical_imaging.sql', import.meta.url),
+        'utf8',
+      ),
+    )
     await db.exec(`insert into public.app_access(doctor_user_id) values ('${doctor}');`)
     await assert.rejects(() =>
       db.exec(`insert into public.app_access(doctor_user_id) values ('${other}');`),
@@ -136,11 +142,12 @@ test('database enforces the single doctor, ownership, private integration storag
     )
     assert.equal((await db.query('select * from public.sessions')).rows.length, 1)
     assert.deepEqual(
-      (await db.query('select assessment, pain_management from public.sessions')).rows[0],
-      { assessment: '', pain_management: '' },
+      (await db.query('select assessment, pain_management, msk_ultrasound from public.sessions'))
+        .rows[0],
+      { assessment: '', pain_management: '', msk_ultrasound: '' },
     )
     await db.exec(
-      "update public.sessions set assessment = 'Visit findings', pain_management = 'Visit pain plan';",
+      "update public.sessions set assessment = 'Visit findings', pain_management = 'Visit pain plan', msk_ultrasound = 'Ultrasound findings';",
     )
     await assert.rejects(() =>
       db.exec("update public.sessions set assessment = repeat('x', 10001);"),
@@ -148,15 +155,22 @@ test('database enforces the single doctor, ownership, private integration storag
     await assert.rejects(() =>
       db.exec("update public.sessions set pain_management = repeat('x', 10001);"),
     )
+    await assert.rejects(() =>
+      db.exec("update public.sessions set msk_ultrasound = repeat('x', 10001);"),
+    )
     await db.exec(
-      `update public.patients set age = 0, symptoms = 'Recorded symptoms', assessment = 'Recorded findings', pain_management = 'Recorded plan';`,
+      `update public.patients set age = 0, symptoms = 'Recorded symptoms', imaging_findings = 'Ultrasound report findings', assessment = 'Recorded findings', pain_management = 'Recorded plan';`,
     )
     assert.deepEqual(
-      (await db.query('select age, symptoms, assessment, pain_management from public.patients'))
-        .rows[0],
+      (
+        await db.query(
+          'select age, symptoms, imaging_findings, assessment, pain_management from public.patients',
+        )
+      ).rows[0],
       {
         age: 0,
         symptoms: 'Recorded symptoms',
+        imaging_findings: 'Ultrasound report findings',
         assessment: 'Recorded findings',
         pain_management: 'Recorded plan',
       },
@@ -164,6 +178,9 @@ test('database enforces the single doctor, ownership, private integration storag
     await assert.rejects(() => db.exec('update public.patients set age = -1;'))
     await assert.rejects(() => db.exec('update public.patients set age = 131;'))
     await assert.rejects(() => db.exec("update public.patients set symptoms = repeat('x', 10001);"))
+    await assert.rejects(() =>
+      db.exec("update public.patients set imaging_findings = repeat('x', 10001);"),
+    )
     assert.equal(
       (await db.query('select amount_cents from public.sessions')).rows[0].amount_cents,
       null,

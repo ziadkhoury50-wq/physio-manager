@@ -4,6 +4,7 @@ export function patientSummaryContext(patient, sessions = []) {
     ['age', 'Age'],
     ['condition', 'Recorded diagnosis'],
     ['symptoms', 'Symptoms'],
+    ['imaging_findings', 'Imaging findings'],
     ['assessment', 'Recorded assessment'],
     ['underlying_conditions', 'Relevant history'],
     ['history', 'Previously recorded medical notes'],
@@ -36,6 +37,7 @@ export function patientSummaryContext(patient, sessions = []) {
     for (const [key, label] of [
       ['symptoms', 'Symptoms'],
       ['pain_score', 'Pain score (0–10)'],
+      ['msk_ultrasound', 'MSK ultrasound imaging'],
       ['assessment', 'Assessment findings'],
       ['pain_management', 'Pain management plan'],
       ['treatment', 'Treatment performed'],

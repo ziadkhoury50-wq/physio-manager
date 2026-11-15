@@ -45,6 +45,7 @@ async function mockApi(page, { allowed = true, saveError = false } = {}) {
       })
     if (path === '/api/access') body = { allowed: true }
     else if (path === '/api/records') body = { patients: [], sessions: [], links: [] }
+    else if (path === '/api/intake-template') body = { tabs: [], updated_at: null }
     else if (path === '/api/calendar/status') body = { connected: false }
     else if (request.method() === 'POST' || request.method() === 'PATCH') {
       writes.push(request.postDataJSON())

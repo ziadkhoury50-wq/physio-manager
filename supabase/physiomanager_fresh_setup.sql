@@ -226,3 +226,13 @@ alter table public.patients add column intake jsonb not null default '{"tabs":[]
   check (jsonb_typeof(intake) = 'object' and octet_length(intake::text) <= 70000);
 notify pgrst, 'reload schema';
 commit;
+
+-- Source: 202611150002_clinical_imaging.sql
+-- Keep patient imaging findings and session-specific MSK ultrasound notes with their records.
+alter table public.patients
+  add column if not exists imaging_findings text not null default '' check (length(imaging_findings) <= 10000);
+
+alter table public.sessions
+  add column if not exists msk_ultrasound text not null default '' check (length(msk_ultrasound) <= 10000);
+
+notify pgrst, 'reload schema';
