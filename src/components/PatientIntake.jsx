@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   ClipboardList,
   LoaderCircle,
   Plus,
@@ -394,9 +395,7 @@ export function PatientIntakeForm({ draft, update, children }) {
       if (!ready) {
         event.preventDefault()
         event.stopPropagation()
-        setError(
-          'Load the assessment template before saving. Please retry Use latest assessment template.',
-        )
+        setError('Questions could not be loaded yet. Retry loading them before saving.')
       }
     }
     form?.addEventListener('submit', guard, true)
@@ -576,11 +575,13 @@ export function PatientIntakeForm({ draft, update, children }) {
               </table>
             </section>
           ))}
-          <div className="intake-actions">
-            <button className="text-link" type="button" disabled={loading} onClick={latest}>
-              Use latest assessment template
-            </button>
-          </div>
+          {(error || (draft.id && intake.tabs.length === 0)) && (
+            <div className="intake-actions">
+              <button className="text-link" type="button" disabled={loading} onClick={latest}>
+                {error ? 'Retry loading questions' : 'Add assessment questions'}
+              </button>
+            </div>
+          )}
           {intake.tabs.length > 0 && (
             <IntakeSummary key={intakeContext(draft)} draft={draft} update={update} />
           )}
@@ -591,7 +592,8 @@ export function PatientIntakeForm({ draft, update, children }) {
 }
 
 function IntakeSummary({ draft, update }) {
-  const [context, setContext] = useState(null)
+  const [context, setContext] = useState(() => intakeContext(draft))
+  const [aiOpen, setAiOpen] = useState(false)
   const [reviewed, setReviewed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -628,8 +630,8 @@ function IntakeSummary({ draft, update }) {
     <section className="intake-summary-editor">
       <h3>Patient assessment summary</h3>
       <p>
-        Review the answers, then prepare a factual summary. Diagnosis remains the doctor's decision.
-        You can also write the summary yourself.
+        Saving the patient creates an answer overview automatically. Add your own notes here if
+        needed.
       </p>
       <Field label="Summary for patient profile">
         <textarea
@@ -639,19 +641,19 @@ function IntakeSummary({ draft, update }) {
           onChange={(e) => update('intake', { ...intake, summary: e.target.value })}
         />
       </Field>
-      <button
-        type="button"
-        className="button secondary"
-        disabled={busy}
-        onClick={() => {
-          setContext(intakeContext(draft))
-          setReviewed(false)
-          setResult(null)
-        }}
+      <details
+        className="intake-ai-options"
+        open={aiOpen}
+        onToggle={(event) => setAiOpen(event.currentTarget.open)}
       >
-        <ClipboardList size={15} /> Prepare AI summary
-      </button>
-      {context !== null && (
+        <summary>
+          AI summary <span>Optional</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </summary>
+        <p>
+          Use Gemini to turn these answers into a readable draft. Review what is sent, then check
+          the generated text before saving. The recorded diagnosis stays under your control.
+        </p>
         <div className="intake-ai-review">
           <Field
             label="Clinical information to send to Gemini"
@@ -700,7 +702,7 @@ function IntakeSummary({ draft, update }) {
                 onClick={() => {
                   update('intake', { ...intake, summary: result })
                   setResult(null)
-                  setContext(null)
+                  setAiOpen(false)
                 }}
               >
                 Use reviewed summary
@@ -708,7 +710,7 @@ function IntakeSummary({ draft, update }) {
             </>
           )}
         </div>
-      )}
+      </details>
       {error && (
         <p className="form-error" role="alert">
           {error}

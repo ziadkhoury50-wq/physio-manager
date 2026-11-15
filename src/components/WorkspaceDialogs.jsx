@@ -45,6 +45,7 @@ export default function WorkspaceDialogs({
     return (
       <Dialog
         key="patient"
+        className="patient-dialog"
         title={modal.editing ? 'Edit patient' : 'New patient'}
         subtitle="Keep the essentials together. You can add more later."
         onClose={closeModal}
