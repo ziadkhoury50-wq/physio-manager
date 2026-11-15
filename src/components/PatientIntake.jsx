@@ -885,7 +885,7 @@ function IntakeSummary({ draft, update, sessions }) {
         onToggle={(event) => setAiOpen(event.currentTarget.open)}
       >
         <summary>
-          AI summary <span>Optional</span>
+          Generate AI summary
           <ChevronDown size={16} aria-hidden="true" />
         </summary>
         <p>
