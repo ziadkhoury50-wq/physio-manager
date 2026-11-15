@@ -46,6 +46,7 @@ const newPatient = {
   age: '',
   symptoms: '',
   condition: '',
+  pain_management: '',
   underlying_conditions: '',
   medication: '',
   history: '',

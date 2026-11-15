@@ -171,9 +171,6 @@ test('session progress and field AI popups preserve notes and require review bef
   await page
     .getByLabel('Treatment performed *', { exact: true })
     .fill('Supervised mobility actually delivered.')
-  await page
-    .getByLabel('Pain management plan', { exact: true })
-    .fill('Agreed pacing and review at next visit.')
   await page.getByRole('button', { name: 'AI help for assessment findings', exact: true }).click()
   const assessmentPopup = page.getByRole('dialog', { name: 'Assessment help', exact: true })
   await expect(assessmentPopup).toBeVisible()
@@ -220,9 +217,6 @@ test('session progress and field AI popups preserve notes and require review bef
   await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
   await expect(page.locator('.session-assessment-card').first()).toContainText(
     'Measured movement documented by clinician.',
-  )
-  await expect(page.locator('.session-assessment-card').first()).toContainText(
-    'Agreed pacing and review at next visit.',
   )
   await expect(page.getByRole('img', { name: /Recorded pain scores/ })).toBeVisible()
   await noOverflow(page)
@@ -536,12 +530,17 @@ test('create, edit, archive, and restore a patient without losing history', asyn
     .getByLabel('Underlying conditions', { exact: true })
     .fill('Recorded underlying condition')
   await page.getByLabel('Medication', { exact: true }).fill('Recorded medication')
-  await page.getByLabel('Presenting condition', { exact: true }).fill('Ankle rehabilitation')
+  await page.getByLabel('Diagnosis', { exact: true }).fill('Ankle rehabilitation')
+  await page.getByLabel('Pain management', { exact: true }).fill('Pacing and gentle mobility.')
   await page
     .getByLabel('Relevant history', { exact: true })
     .fill('Returning after an ankle injury.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Maya Test', exact: true })).toBeVisible()
+  await expect(page.locator('.profile-clinical-summary')).toContainText(
+    'Pacing and gentle mobility.',
+  )
+  await expect(page.locator('.profile-clinical-summary')).toContainText('Ankle rehabilitation')
   await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
   await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Returning after an ankle injury.', { exact: true })).toBeVisible()

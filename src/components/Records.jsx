@@ -190,9 +190,19 @@ export function PatientProfile({
       </a>
       <div className="profile-heading">
         <Avatar name={patient.name} large />
-        <div>
+        <div className="profile-identity">
           <span className="eyebrow">PATIENT PROFILE</span>
           <h1>{patient.name}</h1>
+          <dl className="profile-clinical-summary">
+            <div>
+              <dt>Diagnosis</dt>
+              <dd>{patient.condition || 'Not recorded'}</dd>
+            </div>
+            <div>
+              <dt>Pain management</dt>
+              <dd>{patient.pain_management || 'Not recorded'}</dd>
+            </div>
+          </dl>
         </div>
         <button className="button secondary" onClick={() => openPatient(patient)}>
           Edit patient
@@ -272,8 +282,6 @@ export function PatientProfile({
         <aside className="panel patient-information">
           <h2 className="patient-information-title">Patient information</h2>
           <dl>
-            <dt>Diagnosis</dt>
-            <dd>{patient.condition || 'Not recorded'}</dd>
             <dt>Phone</dt>
             <dd>{patient.phone || 'Not provided'}</dd>
             <dt>Referred by</dt>
@@ -378,7 +386,7 @@ export function PatientProfile({
                     'No previous patient-level assessment.',
                   ],
                   [
-                    'Previous patient-level pain plan',
+                    'Pain management',
                     patient.pain_management,
                     'No pain management plan recorded yet.',
                   ],
@@ -395,8 +403,8 @@ export function PatientProfile({
                   <span className="note-icon">
                     <Activity size={18} />
                   </span>
-                  <h3>Underlying conditions</h3>
-                  <p>{patient.underlying_conditions || 'No underlying conditions recorded.'}</p>
+                  <h3>Relevant history</h3>
+                  <p>{patient.underlying_conditions || 'No relevant history recorded.'}</p>
                 </section>
                 <section className="panel">
                   <span className="note-icon">
@@ -409,8 +417,8 @@ export function PatientProfile({
                   <span className="note-icon">
                     <FileText size={18} />
                   </span>
-                  <h3>Relevant history</h3>
-                  <p>{patient.history || 'No history recorded yet.'}</p>
+                  <h3>Underlying conditions</h3>
+                  <p>{patient.history || 'No underlying conditions recorded.'}</p>
                 </section>
                 <section className="panel">
                   <span className="note-icon">

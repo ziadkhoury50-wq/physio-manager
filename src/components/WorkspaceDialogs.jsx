@@ -109,22 +109,22 @@ export default function WorkspaceDialogs({
                 placeholder="e.g. Right shoulder rehabilitation"
               />
             </Field>
-            <Field label="Underlying conditions">
+            <Field label="Pain management">
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.pain_management || ''}
+                onChange={(e) => update('pain_management', e.target.value)}
+                placeholder="Pain-management strategies, advice, precautions, and review"
+              />
+            </Field>
+            <Field label="Relevant history">
               <textarea
                 rows={2}
                 maxLength={10000}
                 value={draft.underlying_conditions}
                 onChange={(e) => update('underlying_conditions', e.target.value)}
-                placeholder="Other health conditions or relevant diagnoses"
-              />
-            </Field>
-            <Field label="Symptoms" wide>
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.symptoms}
-                onChange={(e) => update('symptoms', e.target.value)}
-                placeholder="Reported symptoms, location, onset, and aggravating or easing factors"
+                placeholder="Relevant medical history, previous injuries, or precautions"
               />
             </Field>
             <Field label="Medication" wide>
@@ -136,13 +136,22 @@ export default function WorkspaceDialogs({
                 placeholder="Current medications and relevant details"
               />
             </Field>
-            <Field label="Relevant history" wide>
+            <Field label="Symptoms" wide>
+              <textarea
+                rows={3}
+                maxLength={10000}
+                value={draft.symptoms}
+                onChange={(e) => update('symptoms', e.target.value)}
+                placeholder="Reported symptoms, location, onset, and aggravating or easing factors"
+              />
+            </Field>
+            <Field label="Underlying conditions" wide>
               <textarea
                 rows={3}
                 maxLength={10000}
                 value={draft.history}
                 onChange={(e) => update('history', e.target.value)}
-                placeholder="Relevant medical history, previous injuries, or precautions…"
+                placeholder="Other health conditions or relevant diagnoses"
               />
             </Field>
             <Field label="Treatment goals" wide>
@@ -301,15 +310,6 @@ export default function WorkspaceDialogs({
                 value={draft.treatment}
                 onChange={(e) => update('treatment', e.target.value)}
                 placeholder="Exercises, manual therapy, techniques, and session details…"
-              />
-            </Field>
-            <Field label="Pain management plan" wide>
-              <textarea
-                rows={3}
-                maxLength={10000}
-                value={draft.pain_management || ''}
-                onChange={(e) => update('pain_management', e.target.value)}
-                placeholder="Visit-specific pain-management strategies, advice, precautions, and review"
               />
             </Field>
             <Field label="Progress / response" wide>
