@@ -5,11 +5,18 @@ export const clinicalInput = z
   .object({
     topic: z.string().trim().min(3).max(180),
     context: z.string().trim().min(10).max(200000),
-    reviewed: z.literal(true),
+    reviewed: z.boolean().optional(),
+    consented: z.literal(true).optional(),
     mode: z.enum(['assessment', 'treatment', 'summary']).default('assessment'),
   })
   .strict()
   .superRefine((value, ctx) => {
+    if (value.mode === 'summary' ? !value.consented && !value.reviewed : !value.reviewed)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['reviewed'],
+        message: 'Confirm before sharing clinical information.',
+      })
     if (value.mode !== 'summary' && value.context.length > 14000)
       ctx.addIssue({
         code: 'custom',
@@ -122,16 +129,29 @@ export const DEFAULT_GEMINI_FALLBACKS = [
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
 ]
+export const normalizeGeminiModel = (value) =>
+  String(value || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/^models\//i, '')
 
-async function generateAcrossModels(fetcher, models, options, outputSchema = assessmentOutput) {
+async function generateAcrossModels(
+  fetcher,
+  models,
+  options,
+  outputSchema = assessmentOutput,
+  onUnavailable = () => {},
+) {
   const deadline = Date.now() + 120000
   for (let i = 0; i < models.length; i++) {
     const model = models[i]
     const body = JSON.parse(options.body)
     if (!model.startsWith('gemini-2.5')) delete body.generationConfig.temperature
-    body.generationConfig.thinkingConfig = model.startsWith('gemini-2.5')
-      ? { thinkingBudget: 1024 }
-      : { thinkingLevel: 'low' }
+    if (model.startsWith('gemini-2.5'))
+      body.generationConfig.thinkingConfig = { thinkingBudget: 1024 }
+    else if (/^gemini-[3-9]/.test(model))
+      body.generationConfig.thinkingConfig = { thinkingLevel: 'low' }
+    else delete body.generationConfig.thinkingConfig
     try {
       const payload = await getJson(
         fetcher,
@@ -180,6 +200,7 @@ async function generateAcrossModels(fetcher, models, options, outputSchema = ass
       return { result, modelUsed: model }
     } catch (error) {
       error.modelUsed = model
+      if (error.upstreamStatus === 404) onUnavailable(model)
       const transient =
         [404, 408, 429, 500, 502, 503, 504].includes(error.upstreamStatus) ||
         ['TimeoutError', 'AbortError'].includes(error.name) ||
@@ -196,10 +217,77 @@ export function createClinicalAssistant({
   model = DEFAULT_GEMINI_MODEL,
   fallbackModels = DEFAULT_GEMINI_FALLBACKS,
   fetcher = fetch,
+  discoverModels = true,
 }) {
-  const models = [
-    ...new Set([model, ...fallbackModels].map((value) => value.trim()).filter(Boolean)),
+  const configuredModels = [
+    ...new Set([model, ...fallbackModels].map(normalizeGeminiModel).filter(Boolean)),
   ].slice(0, 6)
+  let availableModels = null
+  let availableUntil = 0
+  let pendingDiscovery = null
+  const unavailable = new Map()
+  async function resolveModels() {
+    if (!discoverModels) return configuredModels
+    if (Date.now() >= availableUntil && !pendingDiscovery) {
+      pendingDiscovery = (async () => {
+        try {
+          const data = await getJson(
+            fetcher,
+            'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000',
+            {
+              headers: { 'x-goog-api-key': key },
+              signal: AbortSignal.timeout(10000),
+            },
+          )
+          if (Array.isArray(data.models))
+            availableModels = new Set(
+              data.models
+                .filter((item) => item.supportedGenerationMethods?.includes('generateContent'))
+                .map((item) => normalizeGeminiModel(item.name)),
+            )
+          availableUntil = Date.now() + 300000
+        } catch (error) {
+          if (error.keyRejected || [401, 403].includes(error.upstreamStatus)) throw error
+          availableUntil = Date.now() + 30000
+        }
+      })().finally(() => {
+        pendingDiscovery = null
+      })
+    }
+    if (pendingDiscovery) await pendingDiscovery
+    const aliases = [
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+    ]
+    const discovered = [...(availableModels || [])]
+      .filter((name) => /^gemini-\d+(?:\.\d+)?-flash(?:-lite)?(?:-preview(?:-\d+)?)?$/.test(name))
+      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+    const candidates = [
+      ...new Set(
+        [
+          configuredModels[0],
+          'gemini-flash-lite-latest',
+          ...configuredModels.slice(1),
+          ...aliases,
+          ...discovered,
+        ].filter(Boolean),
+      ),
+    ]
+      .filter(
+        (name) =>
+          (!availableModels || availableModels.has(name)) &&
+          (unavailable.get(name) || 0) <= Date.now(),
+      )
+      .slice(0, 8)
+    if (!candidates.length) {
+      const error = new Error('No available text models')
+      error.upstreamStatus = 404
+      throw error
+    }
+    return candidates
+  }
   return async (input) => {
     if (!key)
       throw new HttpError(
@@ -258,6 +346,7 @@ export function createClinicalAssistant({
         literature = 'No retrieved evidence.'
       }
     try {
+      const models = await resolveModels()
       const outputSchema = mode === 'summary' ? summaryOutput : assessmentOutput
       const { result, modelUsed } = await generateAcrossModels(
         fetcher,
@@ -303,6 +392,7 @@ export function createClinicalAssistant({
           }),
         },
         outputSchema,
+        (model) => unavailable.set(model, Date.now() + 300000),
       )
       if (mode === 'summary') return { ...result, generatedAt: new Date().toISOString(), modelUsed }
       const valid = new Set(sources.map((s) => s.id))
@@ -353,7 +443,7 @@ export function createClinicalAssistant({
       if (error.upstreamStatus === 404)
         throw new HttpError(
           503,
-          'None of the configured Gemini models could be accessed. Check GEMINI_MODEL and GEMINI_FALLBACK_MODELS in Render.',
+          'Google could not access a text model for this server key, including discovered fallbacks. Check that Render uses a Gemini API key from the intended Google AI Studio project and that the API is available for that project and location.',
         )
       if (error.upstreamStatus >= 500 || error instanceof TypeError)
         throw new HttpError(

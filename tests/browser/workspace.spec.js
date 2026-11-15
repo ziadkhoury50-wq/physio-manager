@@ -856,11 +856,13 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByRole('button', { name: 'Screening', exact: true }).click()
   await chooseOption(page, 'Night pain? *', 'No')
   await page.getByLabel('Pain score', { exact: true }).fill('0')
-  await page.locator('.intake-ai-options > summary').click()
-  await page.getByRole('checkbox', { name: /I reviewed this text/ }).check()
-  await page.getByRole('button', { name: 'Generate draft', exact: true }).click()
-  await expect(page.getByLabel(/^AI draft/)).toHaveValue(/Night pain denied/)
-  await page.getByRole('button', { name: 'Use reviewed summary', exact: true }).click()
+  await page.getByRole('button', { name: 'Generate summary', exact: true }).click()
+  await expect(page.getByLabel('Summary for patient profile', { exact: true })).toHaveValue(
+    /Night pain denied/,
+  )
+  await expect(page.getByRole('button', { name: 'Use reviewed summary', exact: true })).toHaveCount(
+    0,
+  )
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.locator('.intake-saved-summary')).toContainText('Night pain denied')
   await expect(page.locator('.intake-summary-section ul li')).toHaveCount(1)

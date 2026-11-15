@@ -842,22 +842,21 @@ export function PatientIntakeForm({ draft, update, children, sessions = [] }) {
 
 function IntakeSummary({ draft, update, sessions }) {
   const [context, setContext] = useState(() => patientSummaryContext(draft, sessions))
-  const [aiOpen, setAiOpen] = useState(false)
-  const [reviewed, setReviewed] = useState(false)
+  const [generated, setGenerated] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [result, setResult] = useState(null)
   const intake = draft.intake
   async function generate() {
     setBusy(true)
     setError('')
-    setResult(null)
+    setGenerated(false)
     try {
       const response = await api('/clinical-assistant', {
         method: 'POST',
-        body: { topic: 'Patient intake summary', context, mode: 'summary', reviewed: true },
+        body: { topic: 'Patient intake summary', context, mode: 'summary', consented: true },
       })
-      setResult(formatPatientSummary(response))
+      update('intake', { ...intake, summary: formatPatientSummary(response) })
+      setGenerated(true)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -867,10 +866,23 @@ function IntakeSummary({ draft, update, sessions }) {
   return (
     <section className="intake-summary-editor">
       <h3>Patient assessment summary</h3>
-      <p>
-        Saving the patient creates an answer overview automatically. Add your own notes here if
-        needed.
-      </p>
+      <p>Generate a brief clinical summary, review it below, then save the patient.</p>
+      <div className="intake-summary-action">
+        <button
+          type="button"
+          className="button secondary"
+          disabled={busy || context.trim().length < 10 || context.length > 200000}
+          onClick={generate}
+        >
+          {busy ? <LoaderCircle size={16} className="spin" /> : <ClipboardList size={16} />}
+          {busy ? 'Generating summary?' : 'Generate summary'}
+        </button>
+        <p>
+          Uses the clinical profile, assessment answers and visit notes. Clicking Generate sends
+          this information to Gemini; name, contact and payment fields are excluded.
+        </p>
+      </div>
+      {generated && <p role="status">Summary generated. Review it below, then save the patient.</p>}
       <Field label="Summary for patient profile">
         <textarea
           rows={5}
@@ -879,87 +891,31 @@ function IntakeSummary({ draft, update, sessions }) {
           onChange={(e) => update('intake', { ...intake, summary: e.target.value })}
         />
       </Field>
-      <details
-        className="intake-ai-options"
-        open={aiOpen}
-        onToggle={(event) => setAiOpen(event.currentTarget.open)}
-      >
+      <details className="intake-ai-options intake-summary-context">
         <summary>
-          Generate AI summary
-          <ChevronDown size={16} aria-hidden="true" />
+          Review information shared <ChevronDown size={16} aria-hidden="true" />
         </summary>
-        <p>
-          Get a short summary for each assessment, pain-management considerations, concerns and
-          missing information. No follow-up questions. Clinical details and session history are
-          included; names, contact details and payment information are excluded.
-        </p>
-        <div className="intake-ai-review">
-          <Field
-            label="Clinical information to send to Gemini"
-            hint="Remove names and identifying information. Only this text is sent to Gemini."
-          >
-            <textarea
-              rows={6}
-              value={context}
-              maxLength={200000}
-              onChange={(e) => {
-                setContext(e.target.value)
-                setReviewed(false)
-              }}
-            />
-          </Field>
-          {context.length > 200000 && (
-            <p className="form-error">
-              The clinical record exceeds the AI request limit. Shorten the reviewed text to 200,000
-              characters before generating.
-            </p>
-          )}
-          <IntakeCheckbox checked={reviewed} onChange={(e) => setReviewed(e.target.checked)}>
-            I reviewed this text and removed identifying information.
-          </IntakeCheckbox>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={busy || !reviewed || context.trim().length < 10 || context.length > 200000}
-            onClick={generate}
-          >
-            {busy ? <LoaderCircle size={15} className="spin" /> : <ClipboardList size={15} />}{' '}
-            Generate draft
-          </button>
-          {result && (
-            <>
-              <Field label="AI draft — review before using">
-                <textarea
-                  rows={7}
-                  maxLength={10000}
-                  value={result}
-                  onChange={(e) => setResult(e.target.value)}
-                />
-              </Field>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => {
-                  update('intake', { ...intake, summary: result })
-                  setResult(null)
-                  setAiOpen(false)
-                }}
-              >
-                Use reviewed summary
-              </button>
-            </>
-          )}
-        </div>
+        <p>Remove any identifying information within clinical notes if needed.</p>
+        <Field label="Clinical information to share">
+          <textarea
+            rows={5}
+            maxLength={200000}
+            value={context}
+            onChange={(event) => setContext(event.target.value)}
+          />
+        </Field>
       </details>
+      {context.length > 200000 && (
+        <p className="form-error">
+          This record is too large for one AI request. Open Review information shared to shorten it.
+        </p>
+      )}
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
-      <p>
-        Save the patient to keep the summary. Changing answers clears it so it can be reviewed
-        again. If left blank, saving creates a factual answer overview automatically.
-      </p>
+      <p>Save patient keeps this summary in the patient profile.</p>
     </section>
   )
 }

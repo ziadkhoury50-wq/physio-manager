@@ -4,11 +4,13 @@ import {
   createClinicalAssistant,
   clinicalInput,
   summaryOutput,
+  normalizeGeminiModel,
 } from '../server/clinical-assistant.js'
 
 test('model fallback moves from latest stable to older models on availability errors', async () => {
   const calls = []
   const assistant = createClinicalAssistant({
+    discoverModels: false,
     key: 'secret',
     fetcher: async (url) => {
       if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
@@ -31,6 +33,7 @@ test('authentication failures and safety blocks do not trigger model fallback', 
   for (const blocked of [false, true]) {
     let attempts = 0
     const assistant = createClinicalAssistant({
+      discoverModels: false,
       key: 'secret',
       fetcher: async (url) => {
         if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
@@ -75,6 +78,7 @@ test('treatment help uses exercise literature and a prompt that does not invent 
   let query = '',
     instructions = ''
   const assistant = createClinicalAssistant({
+    discoverModels: false,
     key: 'test-secret',
     fetcher: async (url, options) => {
       if (url.includes('esearch')) {
@@ -97,6 +101,7 @@ test('treatment help uses exercise literature and a prompt that does not invent 
 test('clinical assistant keeps key in request header and allows only retrieved citation IDs', async () => {
   let geminiRequest
   const assistant = createClinicalAssistant({
+    discoverModels: false,
     key: 'test-secret',
     fetcher: async (url, options) => {
       if (url.includes('esearch')) {
@@ -126,8 +131,12 @@ test('clinical assistant keeps key in request header and allows only retrieved c
   assert.ok(!geminiRequest.body.includes('test-secret'))
 })
 test('missing key and incomplete model responses fail without exposing secrets', async () => {
-  await assert.rejects(createClinicalAssistant({})(input), (error) => error.status === 503)
+  await assert.rejects(
+    createClinicalAssistant({ discoverModels: false })(input),
+    (error) => error.status === 503,
+  )
   const assistant = createClinicalAssistant({
+    discoverModels: false,
     key: 'secret',
     fallbackModels: [],
     fetcher: async (url) => {
@@ -144,6 +153,7 @@ test('missing key and incomplete model responses fail without exposing secrets',
 test('truncated and invalid structured output fall back before accepting a complete guide', async () => {
   let attempts = 0
   const assistant = createClinicalAssistant({
+    discoverModels: false,
     key: 'secret',
     fetcher: async (url, options) => {
       if (url.includes('esearch')) return Response.json({ esearchresult: { idlist: [] } })
@@ -173,6 +183,7 @@ test('truncated and invalid structured output fall back before accepting a compl
 test('quota exhaustion and invalid API keys produce actionable public errors', async () => {
   for (const status of [429, 400]) {
     const assistant = createClinicalAssistant({
+      discoverModels: false,
       key: 'secret',
       fallbackModels: [],
       fetcher: async (url) => {
@@ -193,6 +204,7 @@ test('quota exhaustion and invalid API keys produce actionable public errors', a
 })
 test('literature outages are explicit and never produce citation links', async () => {
   const assistant = createClinicalAssistant({
+    discoverModels: false,
     key: 'secret',
     fetcher: async (url) => {
       if (!url.includes('googleapis.com')) throw new Error('offline')
@@ -226,6 +238,7 @@ const summaryDraft = {
 test('intake summary uses reviewed case only and does not send questionnaire content to PubMed', async () => {
   const calls = []
   const assistant = createClinicalAssistant({
+    discoverModels: false,
     key: 'secret',
     fetcher: async (url, options) => {
       calls.push(url)
@@ -274,4 +287,111 @@ test('summary output enforces short sections, text concerns and uncertainty, and
     clinicalInput.safeParse({ ...input, mode: 'assessment', context: 'x'.repeat(20000) }).success,
     false,
   )
+})
+
+test('available-model discovery normalizes configured IDs, skips inaccessible models and caches the project model list', async () => {
+  let listings = 0
+  const generated = []
+  const assistant = createClinicalAssistant({
+    key: 'secret',
+    model: 'models/removed-model',
+    fallbackModels: ['models/gemini-2.5-flash-lite'],
+    discoverModels: true,
+    fetcher: async (url, options) => {
+      if (url.includes('/models?')) {
+        listings++
+        return Response.json({
+          models: [
+            {
+              name: 'models/gemini-2.5-flash-lite',
+              supportedGenerationMethods: ['generateContent'],
+            },
+            {
+              name: 'models/gemini-3.1-flash-image',
+              supportedGenerationMethods: ['generateContent'],
+            },
+          ],
+        })
+      }
+      generated.push(url)
+      assert.deepEqual(JSON.parse(options.body).generationConfig.thinkingConfig, {
+        thinkingBudget: 1024,
+      })
+      return Response.json({
+        candidates: [
+          { finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(summaryDraft) }] } },
+        ],
+      })
+    },
+  })
+  for (let i = 0; i < 2; i++)
+    await assistant({ ...input, mode: 'summary', reviewed: undefined, consented: true })
+  assert.equal(listings, 1)
+  assert.equal(generated.length, 2)
+  assert.ok(generated.every((url) => url.includes('/models/gemini-2.5-flash-lite:generateContent')))
+  assert.equal(normalizeGeminiModel(' models/gemini-2.5-flash-lite '), 'gemini-2.5-flash-lite')
+})
+
+test('stable model aliases work without generation-specific thinking parameters', async () => {
+  const assistant = createClinicalAssistant({
+    key: 'secret',
+    model: 'unavailable-model',
+    fallbackModels: [],
+    discoverModels: true,
+    fetcher: async (url, options) => {
+      if (url.includes('/models?'))
+        return Response.json({
+          models: [
+            { name: 'models/gemini-flash-latest', supportedGenerationMethods: ['generateContent'] },
+          ],
+        })
+      assert.equal(JSON.parse(options.body).generationConfig.thinkingConfig, undefined)
+      return Response.json({
+        candidates: [
+          { finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(summaryDraft) }] } },
+        ],
+      })
+    },
+  })
+  const result = await assistant({
+    ...input,
+    mode: 'summary',
+    reviewed: undefined,
+    consented: true,
+  })
+  assert.equal(result.modelUsed, 'gemini-flash-latest')
+})
+
+test('a listed but inaccessible configured model falls back to the stable alias and is skipped on the next request', async () => {
+  const generated = []
+  const assistant = createClinicalAssistant({
+    key: 'secret',
+    model: 'gemini-3.8-flash',
+    fallbackModels: [],
+    discoverModels: true,
+    fetcher: async (url) => {
+      if (url.includes('/models?'))
+        return Response.json({
+          models: ['gemini-3.8-flash', 'gemini-flash-lite-latest'].map((name) => ({
+            name: 'models/' + name,
+            supportedGenerationMethods: ['generateContent'],
+          })),
+        })
+      generated.push(url)
+      if (url.includes('/gemini-3.8-flash:'))
+        return Response.json(
+          { error: { message: 'not available to this project' } },
+          { status: 404 },
+        )
+      return Response.json({
+        candidates: [
+          { finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(summaryDraft) }] } },
+        ],
+      })
+    },
+  })
+  await assistant({ ...input, mode: 'summary', consented: true })
+  await assistant({ ...input, mode: 'summary', consented: true })
+  assert.equal(generated.filter((url) => url.includes('/gemini-3.8-flash:')).length, 1)
+  assert.equal(generated.filter((url) => url.includes('/gemini-flash-lite-latest:')).length, 2)
 })
