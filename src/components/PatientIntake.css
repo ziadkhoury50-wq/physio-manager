@@ -628,6 +628,76 @@
 .intake-transfer-options {
   margin-top: 16px;
 }
+.intake-profile .intake-snapshot {
+  border: 1px solid #e3e9e5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.intake-profile .intake-snapshot .intake-overview {
+  padding: 16px 18px;
+}
+.intake-snapshot-label {
+  display: block;
+  color: #687970;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.intake-profile .intake-snapshot-row {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #e9eeeb;
+}
+.intake-profile .intake-snapshot-row > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  min-height: 64px;
+}
+.intake-snapshot-row > summary > span {
+  min-width: 0;
+  flex: 1;
+}
+.intake-snapshot-row strong {
+  display: block;
+  color: #30473b;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.intake-snapshot-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #738078;
+  margin-top: 4px;
+}
+.intake-snapshot-row[open] .intake-snapshot-preview {
+  display: none;
+}
+.intake-profile .intake-snapshot-row .intake-summary-section {
+  margin: 0;
+  padding: 0 18px 16px;
+}
+.intake-snapshot ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0 0 0 17px;
+}
+.intake-snapshot .intake-summary-section li,
+.intake-snapshot .intake-overview li {
+  padding: 0 0 0 2px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #43594c;
+  overflow-wrap: anywhere;
+}
 .intake-import-preview details summary {
   cursor: pointer;
 }

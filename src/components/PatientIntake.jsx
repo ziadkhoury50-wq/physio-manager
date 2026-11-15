@@ -24,7 +24,6 @@ import {
 import './PatientIntake.css'
 import {
   patientSummaryContext,
-  summaryBullets,
   formatPatientSummary,
   summarySections,
 } from '../lib/patient-summary'
@@ -970,80 +969,25 @@ export function IntakeProfile({ patient, onEdit }) {
   return (
     <section className="panel intake-profile">
       <div className="intake-profile-heading">
-        <h2>Patient assessment</h2>
+        <h2>Assessment snapshot</h2>
         <button className="button secondary" onClick={onEdit}>
           Edit assessment
         </button>
       </div>
       {intake.summary ? (
-        structured ? (
-          <>
-            {overview && (
-              <div className="intake-saved-summary intake-overview">
-                <ul>
-                  {(overview.bullets || overview.text.split(/(?<=[.!])\s+(?=[A-Z0-9])/)).map(
-                    (point, index) => (
-                      <li key={index}>{point}</li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            )}
-            {details.length > 0 && (
-              <details className="intake-full-summary">
-                <summary>
-                  View clinical details <span>({details.length} sections)</span>
-                  <ChevronDown size={16} aria-hidden="true" />
-                </summary>
-                <div className="intake-saved-summary intake-structured-summary">
-                  {details.map((section, index) => (
-                    <SummarySection section={section} key={index} />
-                  ))}
-                </div>
-              </details>
-            )}
-          </>
-        ) : summaryBullets(intake.summary) ? (
-          <>
-            <ul className="intake-saved-summary intake-summary-bullets">
-              {summaryBullets(intake.summary)
-                .slice(0, 2)
-                .map((bullet, index) => (
-                  <li key={index}>{bullet}</li>
-                ))}
-            </ul>
-            {summaryBullets(intake.summary).length > 2 && (
-              <details className="intake-full-summary">
-                <summary>
-                  View full summary <ChevronDown size={16} aria-hidden="true" />
-                </summary>
-                <ul className="intake-saved-summary intake-summary-bullets">
-                  {summaryBullets(intake.summary)
-                    .slice(2)
-                    .map((bullet, index) => (
-                      <li key={index}>{bullet}</li>
-                    ))}
-                </ul>
-              </details>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="intake-saved-summary intake-summary-legacy-preview">{intake.summary}</p>
-            {intake.summary.length > 240 && (
-              <details className="intake-full-summary">
-                <summary>
-                  View full summary <ChevronDown size={16} aria-hidden="true" />
-                </summary>
-                <p className="intake-saved-summary">{intake.summary}</p>
-              </details>
-            )}
-          </>
-        )
+        <div className="intake-snapshot">
+          <div className="intake-saved-summary intake-overview">
+            <span className="intake-snapshot-label">At a glance</span>
+            <SnapshotPoints text={overview?.text || intake.summary} />
+          </div>
+          <div className="intake-snapshot-rows">
+            {details.map((section, index) => (
+              <SnapshotRow section={section} key={index} />
+            ))}
+          </div>
+        </div>
       ) : (
-        <p>
-          No assessment summary saved yet. Review the answers in Edit assessment to prepare one.
-        </p>
+        <p>No summary saved yet. Edit the assessment to add one.</p>
       )}
       <details className="intake-answer-details">
         <summary>
@@ -1077,19 +1021,47 @@ export function IntakeProfile({ patient, onEdit }) {
   )
 }
 
-function SummarySection({ section }) {
+function snapshotPoints(text) {
+  return text
+    .split(/\n+/)
+    .flatMap((line) =>
+      line
+        .replace(/^[-\u2022]\s+/, '')
+        .trim()
+        .split(/(?<=[.!])\s+(?=[A-Z0-9])/),
+    )
+    .filter(Boolean)
+}
+
+function SnapshotPoints({ text }) {
   return (
-    <section className="intake-summary-section">
-      <h3>{section.title}</h3>
-      {section.bullets ? (
-        <ul>
-          {section.bullets.map((bullet, i) => (
-            <li key={i}>{bullet}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>{section.text}</p>
-      )}
-    </section>
+    <ul>
+      {snapshotPoints(text).map((point, index) => (
+        <li key={index}>{point}</li>
+      ))}
+    </ul>
+  )
+}
+
+function SnapshotRow({ section }) {
+  const label =
+    {
+      'pain management considerations': 'Care considerations',
+      'concerns to review': 'Concerns to review',
+      'missing or uncertain information': 'Missing or unclear',
+    }[section.title.toLowerCase()] || section.title
+  return (
+    <details className="intake-snapshot-row">
+      <summary>
+        <span>
+          <strong>{label}</strong>
+          <span className="intake-snapshot-preview">{snapshotPoints(section.text)[0]}</span>
+        </span>
+        <ChevronDown className="disclosure-chevron" size={16} aria-hidden="true" />
+      </summary>
+      <div className="intake-summary-section">
+        <SnapshotPoints text={section.text} />
+      </div>
+    </details>
   )
 }
