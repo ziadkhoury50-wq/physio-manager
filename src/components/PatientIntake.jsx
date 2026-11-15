@@ -160,8 +160,9 @@ export function IntakeSettings({ onDirty }) {
     <section className="intake-settings settings-section">
       <h3>Patient assessment templates</h3>
       <p>
-        Create tabs and questions once for your practice. New patients use this template. Saved
-        patient answers keep their original questions when you change the template.
+        Create assessment tabs and questions inside Patient details. They appear under Assessments
+        in Add/Edit patient. These are patient questionnaires, separate from the app navigation.
+        Saved patient answers keep their original questions when you change the template.
       </p>
       {busy && <p role="status">Loading or saving template…</p>}
       {error && (
@@ -367,6 +368,9 @@ export function PatientIntakeForm({ draft, update, children }) {
   const [ready, setReady] = useState(Boolean(draft.id))
   const container = useRef(null)
   const intake = draft.intake || empty()
+  const activeAssessment = intake.tabs.some((tab) => tab.id === active)
+    ? active
+    : intake.tabs[0]?.id
   useEffect(() => {
     const form = container.current?.closest('form')
     const guard = (event) => {
@@ -445,99 +449,126 @@ export function PatientIntakeForm({ draft, update, children }) {
         </p>
       )}
       {loading && <p role="status">Loading assessment template…</p>}
-      <div className="intake-tabs" aria-label="Patient form sections">
-        {[{ id: 'basics', title: 'Patient details' }, ...intake.tabs].map((tab) => (
-          <button
-            type="button"
-            className={active === tab.id ? 'selected' : ''}
-            aria-pressed={active === tab.id}
-            key={tab.id}
-            onClick={() => setActive(tab.id)}
-          >
-            {tab.title}
-          </button>
-        ))}
-      </div>
-      <div hidden={active !== 'basics'} onInvalidCapture={() => setActive('basics')}>
-        {children}
-      </div>
-      {intake.tabs.map((tab) => (
-        <section key={tab.id} hidden={active !== tab.id} onInvalidCapture={() => setActive(tab.id)}>
-          <h3>{tab.title}</h3>
-          <table className="intake-table intake-patient-table">
-            <caption className="visually-hidden">{tab.title} questions and answers</caption>
-            <thead>
-              <tr>
-                <th scope="col">Question</th>
-                <th scope="col">Answer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tab.questions.map((q) => (
-                <tr key={q.id}>
-                  <th scope="row">
-                    {q.label}
-                    {q.required ? ' *' : ''}
-                  </th>
-                  <td>
-                    <Field label={`${q.label}${q.required ? ' *' : ''}`}>
-                      {q.type === 'text' ? (
-                        <textarea
-                          rows={3}
-                          maxLength={1200}
-                          required={q.required}
-                          value={intake.answers[q.id] ?? ''}
-                          onChange={(e) => answer(q, e.target.value)}
-                        />
-                      ) : q.type === 'number' ? (
-                        <input
-                          type="number"
-                          step="any"
-                          required={q.required}
-                          value={intake.answers[q.id] ?? ''}
-                          onChange={(e) =>
-                            answer(q, e.target.value === '' ? null : Number(e.target.value))
-                          }
-                        />
-                      ) : (
-                        <Select
-                          required={q.required}
-                          value={intake.answers[q.id] == null ? '' : String(intake.answers[q.id])}
-                          onChange={(e) =>
-                            answer(
-                              q,
-                              e.target.value === ''
-                                ? null
-                                : q.type === 'boolean'
-                                  ? e.target.value === 'true'
-                                  : e.target.value,
-                            )
-                          }
-                        >
-                          <option value="">Not answered</option>
-                          {(q.type === 'boolean' ? ['true', 'false'] : q.options).map((value) => (
-                            <option value={value} key={value}>
-                              {q.type === 'boolean' ? (value === 'true' ? 'Yes' : 'No') : value}
-                            </option>
-                          ))}
-                        </Select>
-                      )}
-                    </Field>
-                  </td>
-                </tr>
+      <section className="patient-details-section" aria-labelledby="patient-details-title">
+        <h2 id="patient-details-title">Patient details</h2>
+        <div className="patient-core-details">{children}</div>
+        <section
+          className="patient-assessments-section"
+          aria-labelledby="patient-assessments-title"
+        >
+          <div className="patient-assessments-heading">
+            <h3 id="patient-assessments-title">Assessments</h3>
+            <p>Questionnaires for this patient, using your practice's assessment templates.</p>
+          </div>
+          {intake.tabs.length > 0 && (
+            <div
+              className="intake-tabs patient-assessment-tabs"
+              aria-label="Patient assessment tabs"
+            >
+              {intake.tabs.map((tab) => (
+                <button
+                  type="button"
+                  key={tab.id}
+                  className={activeAssessment === tab.id ? 'selected' : ''}
+                  aria-pressed={activeAssessment === tab.id}
+                  onClick={() => setActive(tab.id)}
+                >
+                  {tab.title}
+                </button>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
+          {intake.tabs.map((tab) => (
+            <section
+              key={tab.id}
+              hidden={activeAssessment !== tab.id}
+              onInvalidCapture={() => setActive(tab.id)}
+            >
+              <h4 className="patient-assessment-title">{tab.title}</h4>
+              <table className="intake-table intake-patient-table">
+                <caption className="visually-hidden">{tab.title} questions and answers</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Question</th>
+                    <th scope="col">Answer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tab.questions.map((q) => (
+                    <tr key={q.id}>
+                      <th scope="row">
+                        {q.label}
+                        {q.required ? ' *' : ''}
+                      </th>
+                      <td>
+                        <Field label={`${q.label}${q.required ? ' *' : ''}`}>
+                          {q.type === 'text' ? (
+                            <textarea
+                              rows={3}
+                              maxLength={1200}
+                              required={q.required}
+                              value={intake.answers[q.id] ?? ''}
+                              onChange={(e) => answer(q, e.target.value)}
+                            />
+                          ) : q.type === 'number' ? (
+                            <input
+                              type="number"
+                              step="any"
+                              required={q.required}
+                              value={intake.answers[q.id] ?? ''}
+                              onChange={(e) =>
+                                answer(q, e.target.value === '' ? null : Number(e.target.value))
+                              }
+                            />
+                          ) : (
+                            <Select
+                              required={q.required}
+                              value={
+                                intake.answers[q.id] == null ? '' : String(intake.answers[q.id])
+                              }
+                              onChange={(e) =>
+                                answer(
+                                  q,
+                                  e.target.value === ''
+                                    ? null
+                                    : q.type === 'boolean'
+                                      ? e.target.value === 'true'
+                                      : e.target.value,
+                                )
+                              }
+                            >
+                              <option value="">Not answered</option>
+                              {(q.type === 'boolean' ? ['true', 'false'] : q.options).map(
+                                (value) => (
+                                  <option value={value} key={value}>
+                                    {q.type === 'boolean'
+                                      ? value === 'true'
+                                        ? 'Yes'
+                                        : 'No'
+                                      : value}
+                                  </option>
+                                ),
+                              )}
+                            </Select>
+                          )}
+                        </Field>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
+          <div className="intake-actions">
+            <button className="text-link" type="button" disabled={loading} onClick={latest}>
+              Use latest assessment template
+            </button>
+          </div>
+          {intake.tabs.length > 0 && (
+            <IntakeSummary key={intakeContext(draft)} draft={draft} update={update} />
+          )}
         </section>
-      ))}
-      <div className="intake-actions">
-        <button className="text-link" type="button" disabled={loading} onClick={latest}>
-          Use latest assessment template
-        </button>
-      </div>
-      {intake.tabs.length > 0 && (
-        <IntakeSummary key={intakeContext(draft)} draft={draft} update={update} />
-      )}
+      </section>
     </div>
   )
 }

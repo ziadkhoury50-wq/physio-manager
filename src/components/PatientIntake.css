@@ -166,6 +166,43 @@
 .patient-intake-form .form-grid {
   padding: 0;
 }
+.patient-details-section > h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 24px;
+}
+.patient-assessments-section {
+  border: 1px solid #e1e7e3;
+  border-radius: 12px;
+  background: #fbfcfb;
+  margin-top: 28px;
+  padding: 22px;
+  min-width: 0;
+}
+.patient-assessments-heading h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.patient-assessments-heading p {
+  font-size: 12px;
+  color: #64716a;
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+.patient-assessment-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+.patient-assessments-section .intake-summary-editor h3 {
+  font-size: 14px;
+}
+@media (max-width: 600px) {
+  .patient-assessments-section {
+    padding: 16px 12px;
+    margin-top: 24px;
+  }
+}
 .intake-answer-grid {
   display: grid;
   gap: 20px;
