@@ -68,7 +68,7 @@ export function createApp({
       message: { error: 'Too many requests. Please try again shortly.' },
     }),
   )
-  app.use(express.json({ limit: '80kb' }))
+  app.use(express.json({ limit: '1mb' }))
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', configured: Boolean(services) }))
 
   // Google redirects have no bearer token. Single-use state + PKCE authenticates this callback.

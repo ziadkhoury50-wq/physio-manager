@@ -479,6 +479,7 @@
 }
 .intake-profile {
   margin-bottom: 24px;
+  padding: 26px;
 }
 .intake-profile-heading {
   display: flex;
@@ -494,15 +495,89 @@
 .intake-profile .intake-saved-summary {
   white-space: pre-wrap;
   color: #283d34;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.9;
+  padding: 18px 20px;
+  margin: 0;
+  border: 1px solid #e5eae7;
+  border-radius: 10px;
+  background: #fff;
   overflow-wrap: anywhere;
+}
+.intake-profile .intake-summary-bullets {
+  white-space: normal;
+  padding: 16px 22px 16px 38px;
+}
+.intake-summary-bullets li {
+  padding: 6px 0 6px 4px;
+}
+.intake-summary-bullets li::marker {
+  color: #61796b;
 }
 .intake-profile details {
   margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5eae7;
   font-size: 12px;
 }
 .intake-profile summary {
   cursor: pointer;
+}
+.intake-profile > details > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 40px;
+}
+.intake-profile > details > summary::-webkit-details-marker {
+  display: none;
+}
+.intake-profile > details > summary svg {
+  transition: transform 160ms ease;
+}
+.intake-profile > details[open] > summary svg {
+  transform: rotate(180deg);
+}
+.intake-profile .intake-structured-summary {
+  display: grid;
+  gap: 20px;
+  white-space: normal;
+}
+.intake-summary-section + .intake-summary-section {
+  border-top: 1px solid #edf0ed;
+  padding-top: 18px;
+}
+.intake-profile .intake-summary-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: #314d3e;
+}
+.intake-summary-section p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.9;
+}
+.intake-summary-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.intake-summary-section li {
+  padding: 4px 0 4px 3px;
+}
+.intake-template-helper,
+.intake-transfer-options {
+  margin-top: 16px;
+}
+.intake-import-preview details summary {
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .intake-profile > details > summary svg {
+    transition: none;
+  }
 }
 .intake-profile details section {
   margin-top: 20px;
@@ -525,6 +600,15 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 600px) {
+  .intake-profile {
+    padding: 22px 18px;
+  }
+  .intake-profile .intake-saved-summary {
+    padding: 16px;
+  }
+  .intake-profile .intake-summary-bullets {
+    padding: 12px 18px 12px 32px;
+  }
   .patient-intake-form {
     padding: 20px 16px;
   }

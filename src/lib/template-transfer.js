@@ -12,7 +12,7 @@ export function parseTemplateJson(text) {
     return JSON.parse(cleaned)
   } catch {
     throw new Error(
-      'This is not valid JSON. Paste the JSON template returned by ChatGPT or choose an exported template file.',
+      'This is not valid JSON. Paste the JSON template returned by your AI tool or choose an exported template file.',
     )
   }
 }

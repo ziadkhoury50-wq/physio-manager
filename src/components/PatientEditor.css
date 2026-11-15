@@ -1,0 +1,55 @@
+.patient-editor-page {
+  width: 100%;
+  max-width: 1088px;
+  margin: 0 auto;
+  background: #fff;
+}
+.main-column main:has(.patient-editor-page) {
+  background: #fff;
+}
+.patient-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e4eae6;
+}
+.patient-editor-heading h1 {
+  font-size: 30px;
+  line-height: 1.4;
+  margin: 8px 0;
+  font-weight: 600;
+  outline: none;
+}
+.patient-editor-heading p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #64716a;
+}
+.patient-editor-heading > button {
+  flex-shrink: 0;
+}
+.patient-editor-page .patient-intake-form {
+  padding: 0;
+}
+.patient-editor-page .dialog-actions {
+  bottom: 0;
+  margin: 24px 0 0;
+  padding: 16px 0;
+  background: #fff;
+  z-index: 5;
+}
+@media (max-width: 600px) {
+  .patient-editor-heading {
+    gap: 12px;
+  }
+  .patient-editor-heading h1 {
+    font-size: 26px;
+  }
+  .patient-editor-page .dialog-actions {
+    bottom: 72px;
+    padding: 14px 0 max(14px, env(safe-area-inset-bottom));
+  }
+}

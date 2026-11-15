@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createClinicalAssistant, clinicalInput } from '../server/clinical-assistant.js'
+import {
+  createClinicalAssistant,
+  clinicalInput,
+  summaryOutput,
+} from '../server/clinical-assistant.js'
 
 test('model fallback moves from latest stable to older models on availability errors', async () => {
   const calls = []
@@ -205,6 +209,20 @@ test('literature outages are explicit and never produce citation links', async (
   assert.deepEqual(result.assessments[0].sourceIds, [])
 })
 
+const summaryDraft = {
+  sections: [
+    { title: 'Clinical overview', summary: 'Recorded shoulder pain with overhead activity.' },
+  ],
+  painGuidance: [
+    {
+      painType: 'Shoulder pain',
+      guidance: 'Review the recorded restrictions and pain-management plan.',
+    },
+  ],
+  concerns: 'No concerns were documented in the supplied information.',
+  uncertainties: 'Objective examination findings are not documented.',
+}
+
 test('intake summary uses reviewed case only and does not send questionnaire content to PubMed', async () => {
   const calls = []
   const assistant = createClinicalAssistant({
@@ -214,12 +232,10 @@ test('intake summary uses reviewed case only and does not send questionnaire con
       const body = JSON.parse(options.body)
       assert.match(body.systemInstruction.parts[0].text, /Never treat unanswered items as negative/)
       assert.match(body.systemInstruction.parts[0].text, /Do not infer a diagnosis/)
+      assert.match(body.systemInstruction.parts[0].text, /Never ask follow-up questions/)
       return Response.json({
         candidates: [
-          {
-            finishReason: 'STOP',
-            content: { parts: [{ text: JSON.stringify({ ...output, assessments: [] }) }] },
-          },
+          { finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(summaryDraft) }] } },
         ],
       })
     },
@@ -227,5 +243,35 @@ test('intake summary uses reviewed case only and does not send questionnaire con
   const result = await assistant({ ...input, mode: 'summary' })
   assert.equal(calls.length, 1)
   assert.ok(calls[0].includes('generativelanguage.googleapis.com'))
-  assert.deepEqual(result.sources, [])
+  assert.deepEqual(result.sections, summaryDraft.sections)
+  assert.deepEqual(result.painGuidance, summaryDraft.painGuidance)
+})
+
+test('summary output enforces short sections, text concerns and uncertainty, and no follow-up questions', () => {
+  assert.equal(summaryOutput.safeParse(summaryDraft).success, true)
+  assert.equal(
+    summaryOutput.safeParse({ ...summaryDraft, uncertainties: 'What is the diagnosis?' }).success,
+    false,
+  )
+  assert.equal(summaryOutput.safeParse({ ...summaryDraft, concerns: ['A concern'] }).success, false)
+  assert.equal(
+    summaryOutput.safeParse({
+      ...summaryDraft,
+      sections: [{ title: 'Overview', summary: 'x'.repeat(181) }],
+    }).success,
+    false,
+  )
+  assert.equal(
+    summaryOutput.safeParse({ ...summaryDraft, concerns: 'x'.repeat(241) }).success,
+    false,
+  )
+  assert.equal(summaryOutput.safeParse({ ...summaryDraft, questions: [] }).success, false)
+  assert.equal(
+    clinicalInput.safeParse({ ...input, mode: 'summary', context: 'x'.repeat(20000) }).success,
+    true,
+  )
+  assert.equal(
+    clinicalInput.safeParse({ ...input, mode: 'assessment', context: 'x'.repeat(20000) }).success,
+    false,
+  )
 })

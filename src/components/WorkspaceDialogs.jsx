@@ -19,6 +19,7 @@ import { paymentLabel, usd } from '../lib/revenue'
 import FieldAIHelp from './FieldAIHelp'
 import './PatientMatching.css'
 import { PatientIntakeForm } from './PatientIntake'
+import PatientEditor from './PatientEditor'
 
 export default function WorkspaceDialogs({
   modal,
@@ -43,16 +44,14 @@ export default function WorkspaceDialogs({
   if (!modal) return null
   if (modal.type === 'patient')
     return (
-      <Dialog
+      <PatientEditor
         key="patient"
-        className="patient-dialog"
         title={modal.editing ? 'Edit patient' : 'New patient'}
         subtitle="Keep the essentials together. You can add more later."
         onClose={closeModal}
-        wide
       >
         <form onSubmit={saveRecord}>
-          <PatientIntakeForm draft={draft} update={update}>
+          <PatientIntakeForm draft={draft} update={update} sessions={data.sessions}>
             <div className="form-grid">
               <Field label="Full name *">
                 <input
@@ -159,7 +158,7 @@ export default function WorkspaceDialogs({
             </button>
           </div>
         </form>
-      </Dialog>
+      </PatientEditor>
     )
   if (modal.type === 'session')
     return (

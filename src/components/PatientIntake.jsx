@@ -18,10 +18,15 @@ import {
   templateFile,
   importTabs,
   parseTemplateJson,
-  exampleTemplate,
   templateAuthoringPrompt,
 } from '../lib/template-transfer'
 import './PatientIntake.css'
+import {
+  patientSummaryContext,
+  summaryBullets,
+  formatPatientSummary,
+  summarySections,
+} from '../lib/patient-summary'
 
 const empty = () => ({ tabs: [], answers: {}, summary: '' })
 const uid = () => crypto.randomUUID()
@@ -44,27 +49,6 @@ const answerText = (value) =>
       : value === false
         ? 'No'
         : String(value)
-function intakeContext(patient) {
-  const data = patient.intake || empty()
-  return [
-    patient.condition && `Recorded diagnosis: ${patient.condition}`,
-    patient.symptoms && `Symptoms: ${patient.symptoms}`,
-    patient.medication && `Medication: ${patient.medication}`,
-    patient.age != null && patient.age !== '' && `Age: ${patient.age}`,
-    patient.underlying_conditions && `Relevant history: ${patient.underlying_conditions}`,
-    patient.goals && `Treatment goals: ${patient.goals}`,
-    patient.pain_management && `Pain management plan: ${patient.pain_management}`,
-    ...data.tabs
-      .filter((tab) => tab.questions.length > 0)
-      .flatMap((tab) => [
-        tab.title,
-        ...tab.questions.map((q) => `${q.label}: ${answerText(data.answers[q.id])}`),
-      ]),
-  ]
-    .filter(Boolean)
-    .join('\n')
-}
-
 export function IntakeSettings({ onDirty }) {
   const [tabs, setTabs] = useState([])
   const [busy, setBusy] = useState(true)
@@ -77,7 +61,8 @@ export function IntakeSettings({ onDirty }) {
   const [importMode, setImportMode] = useState('append')
   const [transferNotice, setTransferNotice] = useState('')
   const fileInput = useRef(null)
-  const [pastedJson, setPastedJson] = useState('')
+  const [aiResponse, setAiResponse] = useState('')
+  const [previewSource, setPreviewSource] = useState('file')
   const tabBar = useRef(null)
   const currentId = tabs.some((tab) => tab.id === activeId) ? activeId : tabs[0]?.id
   useEffect(() => {
@@ -236,6 +221,7 @@ export function IntakeSettings({ onDirty }) {
       const data = await api('/intake-template/preview', { method: 'POST', body: document })
       if (!data.tabs.length) throw new Error('This file has no tabs to import.')
       setPreview(data.tabs)
+      setPreviewSource('file')
       setImportMode('append')
     } catch (e) {
       setError(e.message)
@@ -243,7 +229,7 @@ export function IntakeSettings({ onDirty }) {
       setBusy(false)
     }
   }
-  async function previewPasted() {
+  async function previewAiResponse() {
     setBusy(true)
     setError('')
     setPreview(null)
@@ -251,10 +237,11 @@ export function IntakeSettings({ onDirty }) {
     try {
       const data = await api('/intake-template/preview', {
         method: 'POST',
-        body: parseTemplateJson(pastedJson),
+        body: parseTemplateJson(aiResponse),
       })
-      if (!data.tabs.length) throw new Error('The JSON has no tabs to import.')
+      if (!data.tabs.length) throw new Error('The AI response has no assessment tabs.')
       setPreview(data.tabs)
+      setPreviewSource('ai')
       setImportMode('append')
     } catch (e) {
       setError(e.message)
@@ -262,27 +249,15 @@ export function IntakeSettings({ onDirty }) {
       setBusy(false)
     }
   }
-  async function copyPrompt() {
+  async function copyAiInstructions() {
     try {
       await navigator.clipboard.writeText(templateAuthoringPrompt)
       setTransferNotice(
-        'Prompt copied. Paste it into ChatGPT and replace the final line with your requirements.',
+        'Instructions copied. Use them with any AI tool, then paste its response below.',
       )
     } catch {
-      setTransferNotice('Select and copy the prompt from the field below.')
+      setTransferNotice('Open View instructions below to select and copy them manually.')
     }
-  }
-  function downloadExample() {
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(exampleTemplate, null, 2)], { type: 'application/json' }),
-    )
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'physiomanager-template-example.json'
-    document.body.append(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
   async function applyImport() {
     if (
@@ -492,75 +467,81 @@ export function IntakeSettings({ onDirty }) {
           <button type="button" className="button primary" disabled={!dirty} onClick={() => save()}>
             <Check size={15} /> Save template
           </button>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={!tabs.length}
-            onClick={exportTemplate}
-          >
-            <Download size={15} /> Export tabs
-          </button>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() => fileInput.current?.click()}
-          >
-            <Upload size={15} /> Import tabs
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".json,application/json"
-            hidden
-            aria-label="Import assessment template file"
-            onChange={readTemplate}
-          />
         </div>
         <details className="intake-ai-options intake-template-helper">
           <summary>
-            Create tabs with ChatGPT <ChevronDown size={16} aria-hidden="true" />
+            Create tabs with AI <ChevronDown size={16} aria-hidden="true" />
           </summary>
           <p>
-            Copy the prompt into ChatGPT and describe the tabs you want. Paste its JSON response
-            below, preview the questions, then import. No patient information is needed.
+            Use any AI tool you prefer. Copy the instructions, describe the tabs you want in that
+            tool, then paste its response here. No file download or app AI credits are needed.
           </p>
-          <div className="intake-actions">
-            <button type="button" className="button secondary" onClick={copyPrompt}>
-              Copy ChatGPT prompt
-            </button>
-            <button type="button" className="button secondary" onClick={downloadExample}>
-              <Download size={15} /> Download example JSON
-            </button>
-          </div>
-          <Field label="Prompt for ChatGPT">
+          <button type="button" className="button secondary" onClick={copyAiInstructions}>
+            Copy AI instructions
+          </button>
+          <details className="intake-copy-instructions">
+            <summary>View instructions</summary>
+            <Field label="Instructions for your AI tool">
+              <textarea
+                rows={7}
+                readOnly
+                value={templateAuthoringPrompt}
+                onFocus={(event) => event.target.select()}
+              />
+            </Field>
+          </details>
+          <Field label="Paste AI response">
             <textarea
-              readOnly
-              rows={7}
-              value={templateAuthoringPrompt}
-              onFocus={(event) => event.target.select()}
-            />
-          </Field>
-          <Field label="Paste template JSON">
-            <textarea
-              rows={7}
+              rows={5}
               maxLength={80000}
-              value={pastedJson}
-              onChange={(event) => setPastedJson(event.target.value)}
-              placeholder="Paste the JSON response from ChatGPT"
+              value={aiResponse}
+              onChange={(event) => setAiResponse(event.target.value)}
+              placeholder="Paste the complete response from your preferred AI tool"
             />
           </Field>
           <button
             type="button"
             className="button secondary"
-            disabled={!pastedJson.trim()}
-            onClick={previewPasted}
+            disabled={!aiResponse.trim()}
+            onClick={previewAiResponse}
           >
-            Preview pasted tabs
+            Preview tabs
           </button>
+        </details>
+        <details className="intake-ai-options intake-transfer-options">
+          <summary>
+            Import or export templates <ChevronDown size={16} aria-hidden="true" />
+          </summary>
+          <p>Optional: transfer a template between doctors' apps using a saved file.</p>
+          <div className="intake-actions">
+            <button
+              type="button"
+              className="button secondary"
+              disabled={!tabs.length}
+              onClick={exportTemplate}
+            >
+              <Download size={15} /> Export tabs
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => fileInput.current?.click()}
+            >
+              <Upload size={15} /> Import tabs
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".json,application/json"
+              hidden
+              aria-label="Import assessment template file"
+              onChange={readTemplate}
+            />
+          </div>
         </details>
         {preview && (
           <section className="intake-import-preview" aria-label="Import preview">
-            <h4>Import preview</h4>
+            <h4>{previewSource === 'ai' ? 'Review generated tabs' : 'Import preview'}</h4>
             <p>
               {preview.length} tabs · {preview.reduce((n, tab) => n + tab.questions.length, 0)}{' '}
               questions
@@ -568,7 +549,30 @@ export function IntakeSettings({ onDirty }) {
             <ul>
               {preview.map((tab) => (
                 <li key={tab.id}>
-                  {tab.title} — {tab.questions.length} questions
+                  <details>
+                    <summary>
+                      {tab.title} ? {tab.questions.length} questions
+                    </summary>
+                    <ul>
+                      {tab.questions.map((q) => (
+                        <li key={q.id}>
+                          {q.label}{' '}
+                          <small>
+                            (
+                            {
+                              {
+                                boolean: 'Yes / No',
+                                text: 'Text',
+                                number: 'Number',
+                                choice: 'Choice',
+                              }[q.type]
+                            }
+                            )
+                          </small>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 </li>
               ))}
             </ul>
@@ -581,7 +585,7 @@ export function IntakeSettings({ onDirty }) {
             <p>Patient records and previously saved assessments are preserved.</p>
             <div className="intake-actions">
               <button type="button" className="button primary" onClick={applyImport}>
-                <Check size={15} /> Import and save
+                <Check size={15} /> {previewSource === 'ai' ? 'Use these tabs' : 'Import and save'}
               </button>
               <button type="button" className="button secondary" onClick={() => setPreview(null)}>
                 Cancel import
@@ -597,7 +601,7 @@ export function IntakeSettings({ onDirty }) {
   )
 }
 
-export function PatientIntakeForm({ draft, update, children }) {
+export function PatientIntakeForm({ draft, update, children, sessions = [] }) {
   const [active, setActive] = useState('basics')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(!draft.id)
@@ -812,7 +816,12 @@ export function PatientIntakeForm({ draft, update, children }) {
             </div>
           )}
           {assessmentTabs.length > 0 && (
-            <IntakeSummary key={intakeContext(draft)} draft={draft} update={update} />
+            <IntakeSummary
+              key={patientSummaryContext(draft, sessions)}
+              draft={draft}
+              update={update}
+              sessions={sessions}
+            />
           )}
         </section>
         <section className="patient-goals-section">
@@ -831,8 +840,8 @@ export function PatientIntakeForm({ draft, update, children }) {
   )
 }
 
-function IntakeSummary({ draft, update }) {
-  const [context, setContext] = useState(() => intakeContext(draft))
+function IntakeSummary({ draft, update, sessions }) {
+  const [context, setContext] = useState(() => patientSummaryContext(draft, sessions))
   const [aiOpen, setAiOpen] = useState(false)
   const [reviewed, setReviewed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -848,18 +857,7 @@ function IntakeSummary({ draft, update }) {
         method: 'POST',
         body: { topic: 'Patient intake summary', context, mode: 'summary', reviewed: true },
       })
-      setResult(
-        [
-          response.overview,
-          response.safety.length ? `Concerns to review:\n${response.safety.join('\n')}` : '',
-          response.uncertainties.length
-            ? `Missing or uncertain:\n${response.uncertainties.join('\n')}`
-            : '',
-          response.questions.length ? `Clarify:\n${response.questions.join('\n')}` : '',
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
-      )
+      setResult(formatPatientSummary(response))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -891,8 +889,9 @@ function IntakeSummary({ draft, update }) {
           <ChevronDown size={16} aria-hidden="true" />
         </summary>
         <p>
-          Use Gemini to turn these answers into a readable draft. Review what is sent, then check
-          the generated text before saving. The recorded diagnosis stays under your control.
+          Get a short summary for each assessment, pain-management considerations, concerns and
+          missing information. No follow-up questions. Clinical details and session history are
+          included; names, contact details and payment information are excluded.
         </p>
         <div className="intake-ai-review">
           <Field
@@ -902,16 +901,17 @@ function IntakeSummary({ draft, update }) {
             <textarea
               rows={6}
               value={context}
-              maxLength={14000}
+              maxLength={200000}
               onChange={(e) => {
                 setContext(e.target.value)
                 setReviewed(false)
               }}
             />
           </Field>
-          {context.length > 14000 && (
+          {context.length > 200000 && (
             <p className="form-error">
-              Shorten the context to 14,000 characters before generating.
+              The clinical record exceeds the AI request limit. Shorten the reviewed text to 200,000
+              characters before generating.
             </p>
           )}
           <IntakeCheckbox checked={reviewed} onChange={(e) => setReviewed(e.target.checked)}>
@@ -920,7 +920,7 @@ function IntakeSummary({ draft, update }) {
           <button
             type="button"
             className="button secondary"
-            disabled={busy || !reviewed || context.trim().length < 10 || context.length > 14000}
+            disabled={busy || !reviewed || context.trim().length < 10 || context.length > 200000}
             onClick={generate}
           >
             {busy ? <LoaderCircle size={15} className="spin" /> : <ClipboardList size={15} />}{' '}
@@ -967,6 +967,7 @@ function IntakeSummary({ draft, update }) {
 export function IntakeProfile({ patient, onEdit }) {
   const intake = patient.intake
   if (!intake?.tabs?.some((tab) => tab.questions.length > 0)) return null
+  const structured = summarySections(intake.summary || '')
   return (
     <section className="panel intake-profile">
       <div className="intake-profile-heading">
@@ -976,14 +977,41 @@ export function IntakeProfile({ patient, onEdit }) {
         </button>
       </div>
       {intake.summary ? (
-        <p className="intake-saved-summary">{intake.summary}</p>
+        structured ? (
+          <div className="intake-saved-summary intake-structured-summary">
+            {structured.map((section, index) => (
+              <section className="intake-summary-section" key={index}>
+                <h3>{section.title}</h3>
+                {section.bullets ? (
+                  <ul>
+                    {section.bullets.map((bullet, i) => (
+                      <li key={i}>{bullet}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{section.text}</p>
+                )}
+              </section>
+            ))}
+          </div>
+        ) : summaryBullets(intake.summary) ? (
+          <ul className="intake-saved-summary intake-summary-bullets">
+            {summaryBullets(intake.summary).map((bullet, index) => (
+              <li key={index}>{bullet}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="intake-saved-summary">{intake.summary}</p>
+        )
       ) : (
         <p>
           No assessment summary saved yet. Review the answers in Edit assessment to prepare one.
         </p>
       )}
       <details>
-        <summary>View assessment answers</summary>
+        <summary>
+          View assessment answers <ChevronDown size={16} aria-hidden="true" />
+        </summary>
         {intake.tabs
           .filter((tab) => tab.questions.length > 0)
           .map((tab) => (

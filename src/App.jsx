@@ -116,7 +116,42 @@ export default function App() {
         : route.startsWith('/sessions')
           ? '/sessions'
           : '/calendar'
-  const patientId = route.startsWith('/patients/') ? route.split('/')[2] : null
+  const patientEditor = route === '/patients/new' || /^\/patients\/[^/]+\/edit$/.test(route)
+  const editorId = route.endsWith('/edit') ? route.split('/')[2] : null
+  const patientId = !patientEditor && route.startsWith('/patients/') ? route.split('/')[2] : null
+  const patientEditorRoute = useRef(null)
+  const modalType = modal?.type
+  useEffect(() => {
+    const syncEditor = () => {
+      if (!allowed || loading) return
+      if (!patientEditor) {
+        if (patientEditorRoute.current) {
+          if (dirty && !saving && !window.confirm('Discard your unsaved patient changes?')) {
+            navigate(patientEditorRoute.current)
+            return
+          }
+          patientEditorRoute.current = null
+          if (modalType === 'patient') setModal(null)
+          setDirty(false)
+        }
+        return
+      }
+      if (patientEditorRoute.current === route) return
+      const record = editorId ? data.patients.find((patient) => patient.id === editorId) : null
+      patientEditorRoute.current = route
+      if (editorId && !record) {
+        setModal(null)
+        setFormError('This patient was not found in your workspace.')
+        return
+      }
+      setDraft(record ? { ...newPatient, ...record, age: record.age ?? '' } : { ...newPatient })
+      setModal({ type: 'patient', editing: Boolean(record) })
+      setDirty(false)
+      setFormError('')
+    }
+    const timer = setTimeout(syncEditor, 0)
+    return () => clearTimeout(timer)
+  }, [route, patientEditor, editorId, allowed, loading, data.patients, dirty, saving, modalType])
   const today = dateKey(now, timeZone)
 
   useEffect(() => {
@@ -322,12 +357,19 @@ export default function App() {
     setModal(null)
     setDirty(false)
     setFormError('')
+    if (patientEditor) {
+      navigate(editorId ? `/patients/${editorId}` : '/patients')
+      window.scrollTo({ top: 0 })
+    }
   }
   function openPatient(record) {
     setDraft(record ? { ...newPatient, ...record, age: record.age ?? '' } : { ...newPatient })
     setModal({ type: 'patient', editing: Boolean(record) })
     setDirty(false)
     setFormError('')
+    const target = record ? `/patients/${record.id}/edit` : '/patients/new'
+    patientEditorRoute.current = target
+    navigate(target)
   }
   function openSession(record, person, event) {
     setDraft(
@@ -366,7 +408,7 @@ export default function App() {
       setDraft((current) => ({
         ...current,
         [field]: value,
-        ...(modal?.type === 'patient' &&
+        ...(modalType === 'patient' &&
         [
           'condition',
           'symptoms',
@@ -382,9 +424,16 @@ export default function App() {
       }))
       setDirty(true)
     },
-    [modal?.type],
+    [modalType],
   )
   function guardNavigation(event, path) {
+    if (patientEditor && path !== route && dirty) {
+      if (!window.confirm('Leave this page and discard unsaved patient changes?')) {
+        event.preventDefault()
+        return
+      }
+      setDirty(false)
+    }
     if (activeTab === '/settings' && path !== '/settings' && dirty) {
       if (!window.confirm('Leave Settings and discard unsaved template changes?')) {
         event.preventDefault()
@@ -469,7 +518,10 @@ export default function App() {
       setDirty(false)
       setModal(null)
       setNotice(`${isPatient ? 'Patient' : 'Session'} ${modal.editing ? 'updated' : 'saved'}.`)
-      if (isPatient) navigate(`/patients/${saved.id}`)
+      if (isPatient) {
+        navigate(`/patients/${saved.id}`)
+        window.scrollTo({ top: 0 })
+      }
     } catch (error) {
       setFormError(error.message)
     } finally {
@@ -761,6 +813,7 @@ export default function App() {
           )}
           {activeTab !== '/settings' &&
             activeTab !== '/dashboard' &&
+            !patientEditor &&
             !(activeTab === '/patients' && patientId) && (
               <div className="page-heading">
                 <div>
@@ -856,6 +909,7 @@ export default function App() {
           )}
           {activeTab === '/patients' &&
             !patientId &&
+            !patientEditor &&
             (loading ? (
               <div className="loading-inline">
                 <LoaderCircle className="spin" /> Loading patients…
@@ -891,6 +945,29 @@ export default function App() {
               viewSession={viewSession}
             />
           )}
+          {patientEditor &&
+            (modal?.type === 'patient' ? (
+              <WorkspaceDialogs
+                modal={modal}
+                draft={draft}
+                update={update}
+                saving={saving}
+                formError={formError}
+                closeModal={closeModal}
+                saveRecord={saveRecord}
+                data={data}
+              />
+            ) : (
+              <div className="loading-inline">
+                {loading ? (
+                  <>
+                    <LoaderCircle size={20} className="spin" /> Loading patient
+                  </>
+                ) : (
+                  <p role="alert">{formError || 'Opening patient form…'}</p>
+                )}
+              </div>
+            ))}
           <footer className="main-footer">
             <span>PhysioManager</span>
             <span>
@@ -928,7 +1005,7 @@ export default function App() {
         rematchPatient={rematchPatient}
         deleteSession={(session) => deleteRecord('sessions', session)}
         {...{
-          modal,
+          modal: modal?.type === 'patient' ? null : modal,
           draft,
           update,
           saving,

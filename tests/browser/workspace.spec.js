@@ -547,6 +547,8 @@ test('create, edit, archive, and restore a patient without losing history', asyn
   await page.getByRole('button', { name: 'Edit patient', exact: true }).click()
   await page.getByLabel('Treatment goals', { exact: true }).fill('Walk comfortably.')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await page.getByRole('tab', { name: 'Assessment & pain management', exact: true }).click()
+  await page.getByText('Patient background', { exact: true }).click()
   await expect(page.getByText('Walk comfortably.', { exact: true })).toBeVisible()
   page.on('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Archive patient', exact: true }).click()
@@ -799,10 +801,12 @@ test('doctor templates persist and new patient answers and reviewed summary surv
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
-        overview: 'Night pain denied; pain score reported as zero.',
-        safety: [],
-        uncertainties: ['Examination not documented.'],
-        questions: [],
+        sections: [
+          { title: 'Screening', summary: 'Night pain denied; pain score reported as zero.' },
+        ],
+        painGuidance: [],
+        concerns: 'No concerns documented.',
+        uncertainties: 'Examination not documented.',
       }),
     })
   })
@@ -859,6 +863,10 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByRole('button', { name: 'Use reviewed summary', exact: true }).click()
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await expect(page.locator('.intake-saved-summary')).toContainText('Night pain denied')
+  await expect(page.locator('.intake-summary-section ul li')).toHaveCount(1)
+  await expect(
+    page.locator('.intake-summary-section').filter({ hasText: 'Concerns to review' }),
+  ).toContainText('No concerns documented.')
   await page.reload()
   await expect(page.locator('.intake-saved-summary')).toContainText('Night pain denied')
   await page.getByText('View assessment answers', { exact: true }).click()
@@ -910,6 +918,7 @@ test('template JSON exports and imports safely, empty tabs stay hidden, and ques
     ],
   }
   await page.goto('/#/settings')
+  await page.locator('.intake-transfer-options > summary').click()
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible()
   const upload = page.getByLabel('Import assessment template file', { exact: true })
   await upload.setInputFiles({
@@ -937,14 +946,15 @@ test('template JSON exports and imports safely, empty tabs stay hidden, and ques
   expect(exported.tabs[0].questions[0].label).toBe('Night pain?')
   expect(exported.tabs[0].id).not.toBe('screen')
   await page.locator('.intake-template-helper > summary').click()
-  await expect(page.getByLabel('Prompt for ChatGPT', { exact: true })).toHaveValue(
+  await page.locator('.intake-copy-instructions > summary').click()
+  await expect(page.getByLabel('Instructions for your AI tool', { exact: true })).toHaveValue(
     /physiomanager-assessment-tabs/,
   )
   await page
-    .getByLabel('Paste template JSON', { exact: true })
+    .getByLabel('Paste AI response', { exact: true })
     .fill('```json\n' + JSON.stringify(exported) + '\n```')
-  await page.getByRole('button', { name: 'Preview pasted tabs', exact: true }).click()
-  await page.getByRole('button', { name: 'Import and save', exact: true }).click()
+  await page.getByRole('button', { name: 'Preview tabs', exact: true }).click()
+  await page.getByRole('button', { name: 'Use these tabs', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toHaveCount(2)
   await upload.setInputFiles({
     name: 'tabs.json',
@@ -968,9 +978,9 @@ test('template JSON exports and imports safely, empty tabs stay hidden, and ques
     page.getByRole('status', { name: 'Loading assessment questions', exact: true }),
   ).toBeVisible()
   await page.getByLabel('Full name *', { exact: true }).fill('Imported patient')
-  const dialogBox = await page.getByRole('dialog').boundingBox()
-  expect(dialogBox.width).toBeCloseTo(page.viewportSize().width, 0)
-  expect(dialogBox.height).toBeCloseTo(page.viewportSize().height, 0)
+  await expect(page).toHaveURL(/#\/patients\/new$/)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Patient details editor' })).toBeVisible()
   await expect(page.getByLabel('Underlying conditions', { exact: true })).toHaveCount(0)
   await expect(page.getByLabel('Pain management plan', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Imported screen', exact: true })).toBeVisible()
@@ -987,4 +997,23 @@ test('template JSON exports and imports safely, empty tabs stay hidden, and ques
     page.locator('.intake-profile').getByRole('heading', { name: 'Empty tab', exact: true }),
   ).toHaveCount(0)
   await noOverflow(page)
+})
+
+test('patient creation is a real page, redirects after save, and edit URLs survive refresh', async ({
+  page,
+}) => {
+  await page.goto('/#/patients/new')
+  await page.getByLabel('Full name *', { exact: true }).fill('Page Patient')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Save patient', exact: true }).click()
+  await expect(page.locator('.profile-heading h1')).toHaveText('Page Patient')
+  await expect(page).toHaveURL(/#\/patients\/[a-f0-9-]+$/)
+  const profileUrl = page.url()
+  await page.getByRole('button', { name: 'Edit patient', exact: true }).click()
+  await expect(page).toHaveURL(/\/edit$/)
+  await page.reload()
+  await expect(page.getByLabel('Full name *', { exact: true })).toHaveValue('Page Patient')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page).toHaveURL(profileUrl)
+  await expect(page.locator('.profile-heading h1')).toHaveText('Page Patient')
 })
