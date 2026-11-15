@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import { ArrowRight, CalendarDays, ClipboardList, LogOut, Settings2, UserRound } from 'lucide-react'
 import { IntakeSettings } from './PatientIntake'
 import { Field } from './UI'
@@ -22,6 +23,14 @@ export default function SettingsPage({
   auth,
   onSignOut,
 }) {
+  const [section, setSection] = useState('assessments')
+  const id = useId()
+  const sections = [
+    ['assessments', 'Assessment templates', ClipboardList],
+    ['calendar', 'Google Calendar', CalendarDays],
+    ['clinic', 'Clinic preferences', Settings2],
+    ['account', 'Doctor account', UserRound],
+  ]
   return (
     <div className="settings-page">
       <div className="page-heading">
@@ -32,49 +41,63 @@ export default function SettingsPage({
         </div>
       </div>
       <div className="settings-page-layout">
-        <nav className="settings-section-nav" aria-label="Settings sections">
-          <a
-            href="#settings-assessments"
-            onClick={(e) => {
-              e.preventDefault()
-              document.getElementById('settings-assessments')?.scrollIntoView({ block: 'start' })
-            }}
-          >
-            <ClipboardList size={17} /> Assessment templates
-          </a>
-          <a
-            href="#settings-calendar"
-            onClick={(e) => {
-              e.preventDefault()
-              document.getElementById('settings-calendar')?.scrollIntoView({ block: 'start' })
-            }}
-          >
-            <CalendarDays size={17} /> Google Calendar
-          </a>
-          <a
-            href="#settings-clinic"
-            onClick={(e) => {
-              e.preventDefault()
-              document.getElementById('settings-clinic')?.scrollIntoView({ block: 'start' })
-            }}
-          >
-            <Settings2 size={17} /> Clinic preferences
-          </a>
-          <a
-            href="#settings-account"
-            onClick={(e) => {
-              e.preventDefault()
-              document.getElementById('settings-account')?.scrollIntoView({ block: 'start' })
-            }}
-          >
-            <UserRound size={17} /> Doctor account
-          </a>
-        </nav>
+        <div
+          className="settings-section-tabs"
+          role="tablist"
+          aria-label="Settings sections"
+          onKeyDown={(event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+            event.preventDefault()
+            const current = sections.findIndex((item) => item[0] === section)
+            const next =
+              event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                  ? sections.length - 1
+                  : (current + (event.key === 'ArrowRight' ? 1 : -1) + sections.length) %
+                    sections.length
+            setSection(sections[next][0])
+            event.currentTarget.querySelectorAll('[role="tab"]')[next].focus()
+          }}
+        >
+          {sections.map(([value, label, Icon]) => (
+            <button
+              type="button"
+              key={value}
+              role="tab"
+              id={`${id}-${value}-tab`}
+              aria-controls={`${id}-${value}-panel`}
+              aria-selected={section === value}
+              tabIndex={section === value ? 0 : -1}
+              onClick={(event) => {
+                setSection(value)
+                event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+              }}
+            >
+              <Icon size={17} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
         <div className="settings-panels">
-          <section className="panel" id="settings-assessments">
+          <section
+            className="panel"
+            id={`${id}-assessments-panel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-assessments-tab`}
+            hidden={section !== 'assessments'}
+            tabIndex={0}
+          >
             <IntakeSettings onDirty={onDirty} />
           </section>
-          <section className="panel settings-section" id="settings-calendar">
+          <section
+            className="panel settings-section"
+            id={`${id}-calendar-panel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-calendar-tab`}
+            hidden={section !== 'calendar'}
+            tabIndex={0}
+          >
             <h2>Google Calendar</h2>
             <p>Choose the calendar for appointments in your practice.</p>
             {connection ? (
@@ -112,7 +135,14 @@ export default function SettingsPage({
               </p>
             )}
           </section>
-          <section className="panel settings-section" id="settings-clinic">
+          <section
+            className="panel settings-section"
+            id={`${id}-clinic-panel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-clinic-tab`}
+            hidden={section !== 'clinic'}
+            tabIndex={0}
+          >
             <h2>Clinic preferences</h2>
             <p>Dates and appointment times use this time zone on this device.</p>
             <Field label="Clinic time zone">
@@ -131,7 +161,14 @@ export default function SettingsPage({
               </Select>
             </Field>
           </section>
-          <section className="panel settings-section" id="settings-account">
+          <section
+            className="panel settings-section"
+            id={`${id}-account-panel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-account-tab`}
+            hidden={section !== 'account'}
+            tabIndex={0}
+          >
             <h2>Doctor account</h2>
             <p>{auth?.user?.email}</p>
             <button className="button secondary" onClick={onSignOut}>

@@ -780,10 +780,12 @@ test('selects have white menus, separators, keyboard support, and work inside mo
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await tab(page, 'Settings')
+  await page.getByRole('tab', { name: 'Clinic preferences', exact: true }).click()
   await chooseOption(page, 'Clinic time zone', 'UTC')
   await expect(page.getByRole('combobox', { name: 'Clinic time zone', exact: true })).toContainText(
     'UTC',
   )
+  await page.getByRole('tab', { name: 'Google Calendar', exact: true }).click()
   await chooseOption(page, 'Calendar to display', 'Test calendar')
   await noOverflow(page)
 })
@@ -814,6 +816,9 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await page.getByLabel('Tab 1 name', { exact: true }).fill('Screening')
   await page.getByRole('button', { name: 'Add question', exact: true }).click()
   await page.getByLabel('Question 1', { exact: true }).fill('Night pain?')
+  await page.getByRole('tab', { name: 'Clinic preferences', exact: true }).click()
+  await page.getByRole('tab', { name: 'Assessment templates', exact: true }).click()
+  await expect(page.getByLabel('Question 1', { exact: true })).toHaveValue('Night pain?')
   await page.getByRole('button', { name: 'Add question', exact: true }).click()
   await page.getByLabel('Question 2', { exact: true }).fill('Pain score')
   await chooseOption(page, 'Answer type for question 2', 'Number')

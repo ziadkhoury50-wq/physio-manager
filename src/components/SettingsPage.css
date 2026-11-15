@@ -1,26 +1,45 @@
+.settings-page {
+  min-width: 0;
+}
 .settings-page-layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
-  align-items: start;
 }
-.settings-section-nav {
-  display: grid;
-  gap: 6px;
-  position: sticky;
-  top: 24px;
-}
-.settings-section-nav a {
+.settings-section-tabs {
   display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #4d6257;
+  gap: 6px;
+  overflow-x: auto;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid #e1e7e3;
+  border-radius: 12px;
+  background: #eef2ef;
 }
-.settings-section-nav a:hover {
-  background: #eaf0ec;
+.settings-section-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  flex: 1 0 auto;
+  padding: 14px 18px;
+  border-radius: 8px;
+  color: #64716a;
+  background: transparent;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.settings-section-tabs button[aria-selected='true'] {
+  background: #fff;
+  color: #18332f;
+  box-shadow: 0 1px 4px #18332f12;
+  font-weight: 500;
+}
+.settings-section-tabs button:hover {
+  color: #18332f;
+}
+.settings-panels > .panel[hidden] {
+  display: none;
 }
 .settings-panels {
   display: grid;
@@ -29,7 +48,7 @@
 }
 .settings-panels > .panel {
   min-width: 0;
-  scroll-margin-top: 24px;
+  padding: 28px;
 }
 .settings-panels h2 {
   font-size: 18px;
@@ -49,28 +68,21 @@
 .settings-panels .field {
   max-width: 100%;
 }
-@media (max-width: 1100px) {
-  .settings-page-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .settings-section-nav {
-    display: flex;
-    overflow-x: auto;
-    position: static;
-    min-width: 0;
-  }
-  .settings-section-nav a {
-    flex-shrink: 0;
-  }
-}
 @media (max-width: 600px) {
   .settings-panels > .panel {
-    padding: 18px 14px;
+    padding: 22px 18px;
   }
   .settings-page-layout {
     gap: 16px;
   }
   .settings-page .page-heading h1 {
     font-size: 30px;
+  }
+}
+
+@media (max-width: 600px) {
+  .settings-section-tabs button {
+    padding: 12px 14px;
+    gap: 7px;
   }
 }
