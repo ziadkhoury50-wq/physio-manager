@@ -189,7 +189,7 @@ export function PatientProfile({
       <a className="back-link" href="#/patients">
         <ArrowLeft size={15} /> All patients
       </a>
-      <div className="profile-heading">
+      <div className="profile-heading profile-page-heading">
         <Avatar name={patient.name} large />
         <div className="profile-identity">
           <span className="eyebrow">PATIENT PROFILE</span>
@@ -205,9 +205,14 @@ export function PatientProfile({
             </div>
           </dl>
         </div>
-        <button className="button secondary" onClick={() => openPatient(patient)}>
-          Edit patient
-        </button>
+        <div className="profile-quick-actions">
+          <button className="button secondary" onClick={() => openPatient(patient)}>
+            Edit patient
+          </button>
+          <button className="button primary" onClick={() => openSession(null, patient)}>
+            <Plus size={16} aria-hidden="true" /> New session
+          </button>
+        </div>
       </div>
       {latestSession && (
         <section className="patient-next-plan" aria-label="Next session reminder">
@@ -219,12 +224,12 @@ export function PatientProfile({
             </span>
             <p>
               {latestSession.plan?.trim()
-                ? !showFullNextPlan && latestSession.plan.trim().length > 400
-                  ? `${latestSession.plan.trim().slice(0, 400)}…`
+                ? !showFullNextPlan && latestSession.plan.trim().length > 180
+                  ? `${latestSession.plan.trim().slice(0, 180)}…`
                   : latestSession.plan.trim()
                 : 'No next-session plan was recorded for the latest visit.'}
             </p>
-            {latestSession.plan?.trim().length > 400 && (
+            {latestSession.plan?.trim().length > 180 && (
               <button
                 type="button"
                 className="text-link"
@@ -279,7 +284,7 @@ export function PatientProfile({
           </details>
         </section>
       )}
-      <div className="profile-layout">
+      <div className="profile-layout patient-profile-layout">
         <aside className="panel patient-information">
           <h2 className="patient-information-title">Patient information</h2>
           <dl>
