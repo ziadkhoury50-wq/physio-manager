@@ -169,7 +169,11 @@ export function createServices(config) {
         return { patients, sessions, links }
       },
       async save({ db, id: owner }, table, record, id) {
-        if (table === 'patients' && record.intake && !record.intake.summary) {
+        if (
+          table === 'patients' &&
+          record.intake &&
+          (!record.intake.summary || /^Answer overview\b/.test(record.intake.summary))
+        ) {
           record = {
             ...record,
             intake: { ...record.intake, summary: summarizeIntake(record.intake) },

@@ -5,7 +5,40 @@ import {
   summaryBullets,
   formatPatientSummary,
   summarySections,
+  visibleSummarySections,
+  profileSummary,
 } from '../src/lib/patient-summary.js'
+
+test('unstarted tabs stay out of AI context and saved summaries, and legacy answer overviews stay compact', () => {
+  const intake = {
+    tabs: [
+      {
+        id: 'a',
+        title: 'Initial screening',
+        questions: [
+          { id: 'no', label: 'Night pain?' },
+          { id: 'missing', label: 'Duration' },
+        ],
+      },
+      { id: 'b', title: 'Knee assessment', questions: [{ id: 'k', label: 'Knee pain?' }] },
+    ],
+    answers: { no: false },
+    summary:
+      '**Overview**\nRecorded pain.\n\n**Knee assessment**\nAll questions unanswered.\n\n**Initial screening**\nNight pain denied.\n\n**Missing or unclear**\nAll items unanswered in knee assessment.',
+  }
+  const context = patientSummaryContext({ intake })
+  assert.match(context, /Night pain\?: No/)
+  assert.match(context, /Duration: Not answered/)
+  assert.doesNotMatch(context, /Knee assessment|Knee pain/)
+  assert.deepEqual(
+    visibleSummarySections(intake).map((s) => s.title),
+    ['Overview', 'Initial screening'],
+  )
+  intake.summary =
+    'Answer overview — full answers are available below.\n' + 'Question: Not answered\n'.repeat(500)
+  assert.ok(profileSummary(intake).length < 100)
+  assert.match(profileSummary(intake), /1 answers recorded/)
+})
 
 test('summary context includes the full clinical profile, all questionnaire answers and all matching visits without identifiers or payment data', () => {
   const patient = {

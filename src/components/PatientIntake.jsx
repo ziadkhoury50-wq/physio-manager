@@ -25,7 +25,9 @@ import './PatientIntake.css'
 import {
   patientSummaryContext,
   formatPatientSummary,
-  summarySections,
+  visibleSummarySections,
+  profileSummary,
+  hasIntakeAnswer,
 } from '../lib/patient-summary'
 
 const empty = () => ({ tabs: [], answers: {}, summary: '' })
@@ -916,7 +918,7 @@ function IntakeSummary({ draft, update, sessions }) {
           onClick={generate}
         >
           {busy ? <LoaderCircle size={16} className="spin" /> : <ClipboardList size={16} />}
-          {busy ? 'Generating summary?' : 'Generate summary'}
+          {busy ? 'Generating summary…' : 'Generate summary'}
         </button>
         <p>
           Uses the clinical profile, assessment answers and visit notes. Clicking Generate sends
@@ -928,7 +930,7 @@ function IntakeSummary({ draft, update, sessions }) {
         <textarea
           rows={5}
           maxLength={10000}
-          value={intake.summary}
+          value={profileSummary(intake)}
           onChange={(e) => update('intake', { ...intake, summary: e.target.value })}
         />
       </Field>
@@ -964,7 +966,7 @@ function IntakeSummary({ draft, update, sessions }) {
 export function IntakeProfile({ patient, onEdit }) {
   const intake = patient.intake
   if (!intake?.tabs?.some((tab) => tab.questions.length > 0)) return null
-  const structured = summarySections(intake.summary || '')
+  const structured = visibleSummarySections(intake)
   const [overview, ...details] = structured || []
   return (
     <section className="panel intake-profile">
@@ -978,7 +980,7 @@ export function IntakeProfile({ patient, onEdit }) {
         <div className="intake-snapshot">
           <div className="intake-saved-summary intake-overview">
             <span className="intake-snapshot-label">At a glance</span>
-            <SnapshotPoints text={overview?.text || intake.summary} />
+            <SnapshotPoints text={overview?.text || profileSummary(intake)} />
           </div>
           <div className="intake-snapshot-rows">
             {details.map((section, index) => (
@@ -994,7 +996,7 @@ export function IntakeProfile({ patient, onEdit }) {
           View assessment answers <ChevronDown size={16} aria-hidden="true" />
         </summary>
         {intake.tabs
-          .filter((tab) => tab.questions.length > 0)
+          .filter((tab) => hasIntakeAnswer(intake, tab))
           .map((tab) => (
             <section key={tab.id}>
               <h3>{tab.title}</h3>
@@ -1006,12 +1008,14 @@ export function IntakeProfile({ patient, onEdit }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {tab.questions.map((q) => (
-                    <tr key={q.id}>
-                      <th scope="row">{q.label}</th>
-                      <td>{answerText(intake.answers[q.id])}</td>
-                    </tr>
-                  ))}
+                  {tab.questions
+                    .filter((q) => intake.answers[q.id] != null && intake.answers[q.id] !== '')
+                    .map((q) => (
+                      <tr key={q.id}>
+                        <th scope="row">{q.label}</th>
+                        <td>{answerText(intake.answers[q.id])}</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </section>

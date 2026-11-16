@@ -94,9 +94,9 @@ test('intake validates answer types, required answers, choices and stable unique
   const record = { tabs, answers: { pain: false, score: 0 }, summary: 'Reviewed summary' }
   assert.equal(intakeSchema.parse(record).answers.pain, false)
   assert.equal(intakeSchema.parse(record).answers.score, 0)
-  assert.match(summarizeIntake(record), /Night pain\?: No/)
-  assert.match(summarizeIntake(record), /Pain score: 0/)
-  assert.match(summarizeIntake(record), /Side: Not answered/)
+  assert.match(summarizeIntake(record), /2 answers recorded/)
+  assert.ok(summarizeIntake(record).length < 150)
+  assert.doesNotMatch(summarizeIntake(record), /Not answered|Night pain/)
   for (const answers of [
     { pain: null, score: 0 },
     { pain: 'false', score: 0 },
@@ -180,5 +180,6 @@ test('authoring example and fenced JSON import are valid, and question counts ar
   )
   const summary = summarizeIntake({ tabs: many, answers, summary: '' })
   assert.ok(summary.length <= 10000)
-  assert.match(summary, /Overview shortened/)
+  assert.match(summary, /75 answers recorded/)
+  assert.ok(summary.length < 150)
 })

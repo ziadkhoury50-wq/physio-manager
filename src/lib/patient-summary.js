@@ -1,3 +1,37 @@
+export const hasIntakeAnswer = (intake, tab) =>
+  tab.questions.some((q) => intake.answers[q.id] != null && intake.answers[q.id] !== '')
+
+export function profileSummary(intake) {
+  const text = intake.summary || ''
+  if (/^Answer overview\b/.test(text)) {
+    const count = intake.tabs
+      .flatMap((t) => t.questions)
+      .filter((q) => intake.answers[q.id] != null && intake.answers[q.id] !== '').length
+    return `${count} answers recorded. Open assessment answers for details.`
+  }
+  return text
+}
+
+export function visibleSummarySections(intake) {
+  const sections = summarySections(profileSummary(intake))
+  if (!sections) return null
+  const key = (text) =>
+    text
+      .toLowerCase()
+      .replace(/[\p{P}\s]+/gu, ' ')
+      .trim()
+  const unused = new Set(
+    intake.tabs.filter((tab) => !hasIntakeAnswer(intake, tab)).map((tab) => key(tab.title)),
+  )
+  return sections.filter(
+    (section) =>
+      !unused.has(key(section.title)) &&
+      !/^all (?:items|questions|screening questions) (?:are )?unanswered\b/i.test(
+        section.text.replace(/^[-•]\s*/, ''),
+      ),
+  )
+}
+
 export function patientSummaryContext(patient, sessions = []) {
   const lines = ['Patient clinical details:']
   for (const [key, label] of [
@@ -15,7 +49,7 @@ export function patientSummaryContext(patient, sessions = []) {
     if (patient[key] != null && patient[key] !== '') lines.push(`${label}: ${patient[key]}`)
   lines.push('\nAssessment questionnaire answers:')
   for (const tab of patient.intake?.tabs || []) {
-    if (!tab.questions.length) continue
+    if (!hasIntakeAnswer(patient.intake, tab)) continue
     lines.push(tab.title)
     for (const q of tab.questions) {
       const value = patient.intake.answers[q.id]

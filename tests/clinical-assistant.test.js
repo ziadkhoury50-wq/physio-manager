@@ -394,7 +394,7 @@ test('stable model aliases work without generation-specific thinking parameters'
   assert.equal(result.modelUsed, 'gemini-flash-latest')
 })
 
-test('a listed but inaccessible configured model falls back to the stable alias and is skipped on the next request', async () => {
+test('summary requests prefer the available lite alias over a slower configured model', async () => {
   const generated = []
   const assistant = createClinicalAssistant({
     key: 'secret',
@@ -424,6 +424,6 @@ test('a listed but inaccessible configured model falls back to the stable alias 
   })
   await assistant({ ...input, mode: 'summary', consented: true })
   await assistant({ ...input, mode: 'summary', consented: true })
-  assert.equal(generated.filter((url) => url.includes('/gemini-3.8-flash:')).length, 1)
+  assert.equal(generated.filter((url) => url.includes('/gemini-3.8-flash:')).length, 0)
   assert.equal(generated.filter((url) => url.includes('/gemini-flash-lite-latest:')).length, 2)
 })

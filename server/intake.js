@@ -71,40 +71,12 @@ export const templateFileSchema = templateSchema
   .strict()
 
 export function summarizeIntake(intake) {
-  if (
-    !intake.tabs.some((t) =>
-      t.questions.some((q) => intake.answers[q.id] != null && intake.answers[q.id] !== ''),
-    )
-  )
-    return ''
-  const brief = (value, max) => (value.length > max ? `${value.slice(0, max)}…` : value)
-  const lines = [
-    'Answer overview — full answers are available below.',
-    ...intake.tabs
-      .filter((tab) => tab.questions.length > 0)
-      .flatMap((tab) => [
-        tab.title,
-        ...tab.questions.map((q) => {
-          const a = intake.answers[q.id]
-          const value =
-            a == null || a === ''
-              ? 'Not answered'
-              : a === true
-                ? 'Yes'
-                : a === false
-                  ? 'No'
-                  : String(a)
-          return `${brief(q.label, 80)}: ${brief(value, 120)}`
-        }),
-      ]),
-  ]
-  let overview = ''
-  for (const line of lines) {
-    if (overview.length + line.length + 1 > 9000)
-      return `${overview}\n\nOverview shortened. View the full assessment answers for the remaining questions.`
-    overview += `${overview ? '\n' : ''}${line}`
-  }
-  return overview
+  const answered = intake.tabs
+    .flatMap((tab) => tab.questions)
+    .filter((q) => intake.answers[q.id] != null && intake.answers[q.id] !== '').length
+  return answered
+    ? `Answer overview: ${answered} answers recorded. Open assessment answers for details.`
+    : ''
 }
 
 export function createIntakeService() {

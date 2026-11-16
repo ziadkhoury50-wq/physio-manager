@@ -903,7 +903,7 @@ test('doctor templates persist and new patient answers and reviewed summary surv
   await expect(page.getByLabel('Summary for patient profile', { exact: true })).toHaveValue('')
   await page.getByRole('button', { name: 'Save patient', exact: true }).click()
   await page.getByRole('tab', { name: 'Assessment & pain management' }).click()
-  await expect(page.locator('.intake-saved-summary').first()).toContainText('Night pain?: Yes')
+  await expect(page.locator('.intake-saved-summary').first()).toContainText('2 answers recorded')
   const patientUrl = page.url()
   await tab(page, 'Settings')
   page.once('dialog', (dialog) => dialog.accept())
