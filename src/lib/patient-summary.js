@@ -94,16 +94,27 @@ export function summaryBullets(text) {
 }
 
 export function formatPatientSummary(result) {
-  const blocks = result.sections.map((section) => `**${section.title}**\n- ${section.summary}`)
-  if (result.painGuidance.length)
-    blocks.push(
-      `**Pain management considerations**\n${result.painGuidance.map((item) => `- ${item.painType}: ${item.guidance}`).join('\n')}`,
-    )
-  blocks.push(
-    `**Concerns to review**\n${result.concerns}`,
-    `**Missing or uncertain information**\n${result.uncertainties}`,
-  )
-  return blocks.join('\n\n')
+  return [
+    result.sections[0]?.summary,
+    result.painGuidance[0]?.guidance,
+    [result.concerns, result.uncertainties].filter(Boolean).join(' '),
+  ]
+    .filter(Boolean)
+    .map((line) => `- ${line}`)
+    .join('\n')
+}
+
+export function compactSummary(intake) {
+  const sections = visibleSummarySections(intake)
+  const text = profileSummary(intake)
+  const brief = (value) => (value.length > 160 ? value.slice(0, 157).trimEnd() + '...' : value)
+  if (!sections)
+    return (summaryBullets(text) || text.split(/\n+/)).filter(Boolean).slice(0, 3).map(brief)
+  const care = sections.find((s) => /pain management|care consideration/i.test(s.title))
+  const review = sections.filter((s) => /concerns|missing|uncertain|unclear/i.test(s.title))
+  return [sections[0]?.text, care?.text, review.map((s) => s.text).join(' ')]
+    .filter(Boolean)
+    .map((value) => brief(value.replace(/^[-\u2022]\s*/gm, '').replace(/\n/g, ' ')))
 }
 
 export function summarySections(text) {

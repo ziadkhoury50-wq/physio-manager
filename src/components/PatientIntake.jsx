@@ -25,7 +25,7 @@ import './PatientIntake.css'
 import {
   patientSummaryContext,
   formatPatientSummary,
-  visibleSummarySections,
+  compactSummary,
   profileSummary,
   hasIntakeAnswer,
 } from '../lib/patient-summary'
@@ -966,8 +966,7 @@ function IntakeSummary({ draft, update, sessions }) {
 export function IntakeProfile({ patient, onEdit }) {
   const intake = patient.intake
   if (!intake?.tabs?.some((tab) => tab.questions.length > 0)) return null
-  const structured = visibleSummarySections(intake)
-  const [overview, ...details] = structured || []
+  const points = compactSummary(intake)
   return (
     <section className="panel intake-profile">
       <div className="intake-profile-heading">
@@ -980,12 +979,11 @@ export function IntakeProfile({ patient, onEdit }) {
         <div className="intake-snapshot">
           <div className="intake-saved-summary intake-overview">
             <span className="intake-snapshot-label">At a glance</span>
-            <SnapshotPoints text={overview?.text || profileSummary(intake)} />
-          </div>
-          <div className="intake-snapshot-rows">
-            {details.map((section, index) => (
-              <SnapshotRow section={section} key={index} />
-            ))}
+            <ul>
+              {points.map((point, index) => (
+                <li key={index}>{point}</li>
+              ))}
+            </ul>
           </div>
         </div>
       ) : (
@@ -1022,50 +1020,5 @@ export function IntakeProfile({ patient, onEdit }) {
           ))}
       </details>
     </section>
-  )
-}
-
-function snapshotPoints(text) {
-  return text
-    .split(/\n+/)
-    .flatMap((line) =>
-      line
-        .replace(/^[-\u2022]\s+/, '')
-        .trim()
-        .split(/(?<=[.!])\s+(?=[A-Z0-9])/),
-    )
-    .filter(Boolean)
-}
-
-function SnapshotPoints({ text }) {
-  return (
-    <ul>
-      {snapshotPoints(text).map((point, index) => (
-        <li key={index}>{point}</li>
-      ))}
-    </ul>
-  )
-}
-
-function SnapshotRow({ section }) {
-  const label =
-    {
-      'pain management considerations': 'Care considerations',
-      'concerns to review': 'Concerns to review',
-      'missing or uncertain information': 'Missing or unclear',
-    }[section.title.toLowerCase()] || section.title
-  return (
-    <details className="intake-snapshot-row">
-      <summary>
-        <span>
-          <strong>{label}</strong>
-          <span className="intake-snapshot-preview">{snapshotPoints(section.text)[0]}</span>
-        </span>
-        <ChevronDown className="disclosure-chevron" size={16} aria-hidden="true" />
-      </summary>
-      <div className="intake-summary-section">
-        <SnapshotPoints text={section.text} />
-      </div>
-    </details>
   )
 }

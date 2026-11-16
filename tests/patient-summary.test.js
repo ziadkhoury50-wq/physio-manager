@@ -7,6 +7,7 @@ import {
   summarySections,
   visibleSummarySections,
   profileSummary,
+  compactSummary,
 } from '../src/lib/patient-summary.js'
 
 test('unstarted tabs stay out of AI context and saved summaries, and legacy answer overviews stay compact', () => {
@@ -127,11 +128,12 @@ test('structured summaries keep assessment and pain bullets apart from plain con
     concerns: 'No concerns documented.',
     uncertainties: 'Strength measurements not documented.',
   })
-  const sections = summarySections(rendered)
-  assert.deepEqual(sections[0].bullets, ['Night pain denied.'])
-  assert.equal(sections[1].title, 'Pain management considerations')
-  assert.equal(sections[2].bullets, null)
-  assert.equal(sections[2].text, 'No concerns documented.')
-  assert.equal(sections[3].title, 'Missing or uncertain information')
+  assert.equal(rendered.split('\n').length, 3)
+  assert.deepEqual(summaryBullets(rendered), [
+    'Night pain denied.',
+    'Review the documented plan.',
+    'No concerns documented. Strength measurements not documented.',
+  ])
+  assert.ok(compactSummary({ tabs: [], answers: {}, summary: rendered }).length <= 3)
   assert.equal(summarySections('Legacy paragraph.'), null)
 })
