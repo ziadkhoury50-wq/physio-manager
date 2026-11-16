@@ -263,6 +263,11 @@ test('intake summary uses reviewed case only and does not send questionnaire con
 test('summary output enforces short sections, text concerns and uncertainty, and no follow-up questions', () => {
   assert.equal(summaryOutput.safeParse(summaryDraft).success, true)
   assert.equal(
+    summaryOutput.safeParse({ ...summaryDraft, painGuidance: [], concerns: '', uncertainties: '' })
+      .success,
+    true,
+  )
+  assert.equal(
     summaryOutput.safeParse({ ...summaryDraft, uncertainties: 'What is the diagnosis?' }).success,
     false,
   )
